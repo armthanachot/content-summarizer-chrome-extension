@@ -11,13 +11,6 @@
     { code: 'en', name: 'English', flag: '🇺🇸' },
   ];
 
-  if (document.getElementById(INJECTED_ID)) return;
-
-  const marker = document.createElement('div');
-  marker.id = INJECTED_ID;
-  marker.style.display = 'none';
-  document.body.appendChild(marker);
-
   function isContextValid() {
     try {
       return !!chrome.runtime?.id;
@@ -26,12 +19,29 @@
     }
   }
 
-  function cleanup() {
+  // ===================== Injection Guard =====================
+
+  const existing = document.getElementById(INJECTED_ID);
+  if (existing) {
+    try {
+      const storedId = existing.getAttribute('data-ext-id');
+      if (storedId && storedId === chrome.runtime.id) {
+        return;
+      }
+    } catch {}
     [INJECTED_ID, POPOVER_ID, MODAL_ID].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.remove();
     });
   }
+
+  const marker = document.createElement('div');
+  marker.id = INJECTED_ID;
+  marker.style.display = 'none';
+  try {
+    marker.setAttribute('data-ext-id', chrome.runtime.id);
+  } catch {}
+  document.body.appendChild(marker);
 
   // ===================== Markdown Parser =====================
 
@@ -181,8 +191,8 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       font-size: 14px;
       color: #2E3A2E;
-      overflow: hidden;
       z-index: 2147483647;
+      pointer-events: auto;
     }
 
     .modal-header {
@@ -196,6 +206,7 @@
       user-select: none;
       -webkit-user-select: none;
       flex-shrink: 0;
+      border-radius: 14px 14px 0 0;
     }
 
     .modal-title {
@@ -712,6 +723,22 @@
       line-height: 1.5;
     }
 
+    /* ===== Edge Resize Handles ===== */
+
+    .resize-handle {
+      position: absolute;
+      z-index: 10;
+    }
+
+    .resize-n  { top: -3px; left: 14px; right: 14px; height: 6px; cursor: ns-resize; }
+    .resize-s  { bottom: -3px; left: 14px; right: 14px; height: 6px; cursor: ns-resize; }
+    .resize-e  { right: -3px; top: 14px; bottom: 14px; width: 6px; cursor: ew-resize; }
+    .resize-w  { left: -3px; top: 14px; bottom: 14px; width: 6px; cursor: ew-resize; }
+    .resize-ne { top: -3px; right: -3px; width: 14px; height: 14px; cursor: nesw-resize; }
+    .resize-nw { top: -3px; left: -3px; width: 14px; height: 14px; cursor: nwse-resize; }
+    .resize-se { bottom: -3px; right: -3px; width: 14px; height: 14px; cursor: nwse-resize; }
+    .resize-sw { bottom: -3px; left: -3px; width: 14px; height: 14px; cursor: nesw-resize; }
+
     .modal-enter {
       animation: cs-fadeIn 0.22s ease-out;
     }
@@ -732,12 +759,12 @@
   let pendingText = '';
   let lastSelectedText = '';
 
-  // Modal DOM refs (created lazily)
   let modalRoot = null;
   let modalShadow = null;
   let modal = null;
   let modalHeader = null;
   let modalBody = null;
+  let dropdownClickHandler = null;
   const INIT_W = 560;
   const INIT_H = 500;
 
@@ -795,16 +822,17 @@
     btn.className = 'cs-popover';
     btn.title = 'Summarize selection';
     const img = document.createElement('img');
-    try { img.src = chrome.runtime.getURL('icons/icon48.png'); } catch { /* context invalidated */ }
+    try {
+      img.src = chrome.runtime.getURL('icons/icon48.png');
+    } catch {}
     img.alt = 'Summarize';
     btn.appendChild(img);
     pShadow.appendChild(btn);
 
     document.body.appendChild(host);
 
-    // --- Show popover near selection on mouseup ---
     document.addEventListener('mouseup', (e) => {
-      if (!isContextValid()) { cleanup(); return; }
+      if (!isContextValid()) return;
       if (e.composedPath().includes(host)) return;
       if (modalRoot && e.composedPath().includes(modalRoot)) return;
 
@@ -834,22 +862,23 @@
       }, 10);
     });
 
-    // --- Hide popover on mousedown elsewhere ---
     document.addEventListener('mousedown', (e) => {
       if (e.composedPath().includes(host)) return;
       btn.classList.remove('visible');
     });
 
-    // --- Hide on scroll ---
-    document.addEventListener('scroll', () => {
-      btn.classList.remove('visible');
-    }, true);
+    document.addEventListener(
+      'scroll',
+      () => {
+        btn.classList.remove('visible');
+      },
+      true
+    );
 
-    // --- Click popover → open modal with selected text ---
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (!isContextValid()) { cleanup(); return; }
+      if (!isContextValid()) return;
       btn.classList.remove('visible');
       openModal(lastSelectedText);
       lastSelectedText = '';
@@ -864,8 +893,7 @@
     modalRoot = document.createElement('div');
     modalRoot.id = MODAL_ID;
     modalRoot.style.cssText =
-      'all:initial; position:fixed; top:0; left:0; width:0; height:0; z-index:2147483647;';
-    modalRoot.style.display = 'none';
+      'all:initial; position:fixed; top:0; left:0; width:0; height:0; z-index:2147483647; pointer-events:none;';
 
     modalShadow = modalRoot.attachShadow({ mode: 'open' });
 
@@ -875,6 +903,7 @@
 
     modal = document.createElement('div');
     modal.className = 'modal modal-enter';
+    modal.style.display = 'none';
     modal.style.left = (window.innerWidth - INIT_W) / 2 + 'px';
     modal.style.top = (window.innerHeight - INIT_H) / 2 + 'px';
     modal.style.width = INIT_W + 'px';
@@ -898,9 +927,8 @@
     modalShadow.appendChild(modal);
     document.body.appendChild(modalRoot);
 
-    // Header events
     modalHeader.querySelector('.close-btn').addEventListener('click', () => {
-      modalRoot.style.display = 'none';
+      modal.style.display = 'none';
     });
 
     modalHeader.querySelector('.settings-btn').addEventListener('click', () => {
@@ -914,34 +942,53 @@
     });
 
     initDrag();
+    initEdgeResize();
   }
 
   // ===================== Open / Toggle =====================
 
+  function showModal() {
+    modal.style.display = 'flex';
+  }
+
+  function hideModal() {
+    modal.style.display = 'none';
+  }
+
+  function isModalVisible() {
+    return modal && modal.style.display !== 'none';
+  }
+
   function openModal(prefillText) {
-    if (!isContextValid()) { cleanup(); return; }
+    if (!isContextValid()) return;
     pendingText = prefillText || '';
     ensureModal();
-    modalRoot.style.display = '';
+    showModal();
+
+    if (apiKey) {
+      showMainView();
+      return;
+    }
+
+    showKeyView();
 
     try {
       chrome.storage.local.get([STORAGE_KEY], (result) => {
         if (!isContextValid()) return;
-        apiKey = result[STORAGE_KEY] || '';
-        if (apiKey) {
+        const storedKey = result[STORAGE_KEY] || '';
+        if (storedKey) {
+          apiKey = storedKey;
           showMainView();
-        } else {
-          showKeyView();
         }
       });
-    } catch { cleanup(); }
+    } catch {}
   }
 
   function toggleModal() {
-    if (!modalRoot || modalRoot.style.display === 'none') {
+    if (!isModalVisible()) {
       openModal('');
     } else {
-      modalRoot.style.display = 'none';
+      hideModal();
     }
   }
 
@@ -975,11 +1022,9 @@
       }
       apiKey = val;
       try {
-        chrome.storage.local.set({ [STORAGE_KEY]: val }, () => {
-          if (!isContextValid()) return;
-          showMainView();
-        });
-      } catch { cleanup(); }
+        chrome.storage.local.set({ [STORAGE_KEY]: val });
+      } catch {}
+      showMainView();
     });
 
     input.addEventListener('keydown', (e) => {
@@ -990,9 +1035,13 @@
   }
 
   function showMainView() {
+    if (dropdownClickHandler) {
+      modalShadow.removeEventListener('click', dropdownClickHandler);
+      dropdownClickHandler = null;
+    }
+
     modalBody.innerHTML = '';
 
-    // --- Input panel ---
     const inputPanel = document.createElement('div');
     inputPanel.className = 'input-panel';
     inputPanel.innerHTML = `
@@ -1009,13 +1058,11 @@
     `;
     modalBody.appendChild(inputPanel);
 
-    // --- Divider ---
     const divider = document.createElement('div');
     divider.className = 'divider';
     divider.style.display = 'none';
     modalBody.appendChild(divider);
 
-    // --- Response panel ---
     const responsePanel = document.createElement('div');
     responsePanel.className = 'response-panel';
     responsePanel.style.display = 'none';
@@ -1035,7 +1082,6 @@
     `;
     modalBody.appendChild(responsePanel);
 
-    // --- Refs ---
     const textarea = inputPanel.querySelector('.content-input');
     const lengthInput = inputPanel.querySelector('.response-length');
     const summarizeBtn = inputPanel.querySelector('.btn-summarize');
@@ -1045,25 +1091,23 @@
     const translateBtn = responsePanel.querySelector('.translate-btn');
     const translateWrapper = responsePanel.querySelector('.translate-wrapper');
 
-    // Set translate icon image
     const translateImg = document.createElement('img');
-    try { translateImg.src = chrome.runtime.getURL('icons/translate.png'); } catch { /* context invalidated */ }
+    try {
+      translateImg.src = chrome.runtime.getURL('icons/translate.png');
+    } catch {}
     translateImg.alt = 'Translate';
     translateBtn.appendChild(translateImg);
 
-    // Prefill textarea with selected text if available
     if (pendingText) {
       textarea.value = pendingText;
       pendingText = '';
     }
 
-    // Restore previous response if exists
     if (rawResponse) {
       expandWithResponse(divider, responsePanel);
       responseContent.innerHTML = parseMarkdown(rawResponse);
     }
 
-    // --- Summarize ---
     summarizeBtn.addEventListener('click', async () => {
       const content = textarea.value.trim();
       if (!content) {
@@ -1087,7 +1131,8 @@
       `;
 
       try {
-        if (!isContextValid()) throw new Error('Extension was reloaded. Please refresh the page.');
+        if (!isContextValid())
+          throw new Error('Extension was reloaded. Please refresh the page.');
         const result = await new Promise((resolve, reject) => {
           try {
             chrome.runtime.sendMessage(
@@ -1097,11 +1142,17 @@
                   reject(new Error(chrome.runtime.lastError.message));
                   return;
                 }
+                if (!resp) {
+                  reject(new Error('No response from background script.'));
+                  return;
+                }
                 if (resp.success) resolve(resp.data);
                 else reject(new Error(resp.error));
               }
             );
-          } catch (e) { reject(e); }
+          } catch (e) {
+            reject(e);
+          }
         });
         rawResponse = result;
         originalResponse = result;
@@ -1115,13 +1166,11 @@
       }
     });
 
-    // --- Clear (only input, NOT response) ---
     clearBtn.addEventListener('click', () => {
       textarea.value = '';
       textarea.focus();
     });
 
-    // --- Copy ---
     copyBtn.addEventListener('click', () => {
       if (!rawResponse) return;
       navigator.clipboard
@@ -1141,12 +1190,11 @@
         });
     });
 
-    // --- Translate dropdown ---
     let dropdownOpen = false;
 
     function closeDropdown() {
-      const existing = translateWrapper.querySelector('.translate-dropdown');
-      if (existing) existing.remove();
+      const dd = translateWrapper.querySelector('.translate-dropdown');
+      if (dd) dd.remove();
       dropdownOpen = false;
     }
 
@@ -1177,21 +1225,35 @@
           `;
 
           try {
-            if (!isContextValid()) throw new Error('Extension was reloaded. Please refresh the page.');
+            if (!isContextValid())
+              throw new Error(
+                'Extension was reloaded. Please refresh the page.'
+              );
             const result = await new Promise((resolve, reject) => {
               try {
                 chrome.runtime.sendMessage(
-                  { type: 'translate', apiKey, content: originalResponse, targetLang: lang.name },
+                  {
+                    type: 'translate',
+                    apiKey,
+                    content: originalResponse,
+                    targetLang: lang.name,
+                  },
                   (resp) => {
                     if (chrome.runtime.lastError) {
                       reject(new Error(chrome.runtime.lastError.message));
+                      return;
+                    }
+                    if (!resp) {
+                      reject(new Error('No response from background script.'));
                       return;
                     }
                     if (resp.success) resolve(resp.data);
                     else reject(new Error(resp.error));
                   }
                 );
-              } catch (e) { reject(e); }
+              } catch (e) {
+                reject(e);
+              }
             });
             rawResponse = result;
             responseContent.innerHTML = parseMarkdown(result);
@@ -1206,14 +1268,13 @@
       dropdownOpen = true;
     });
 
-    // Close dropdown when clicking outside
-    modalShadow.addEventListener('click', (e) => {
+    dropdownClickHandler = (e) => {
       if (dropdownOpen && !e.composedPath().includes(translateWrapper)) {
         closeDropdown();
       }
-    });
+    };
+    modalShadow.addEventListener('click', dropdownClickHandler);
 
-    // --- Resizable divider ---
     initDividerResize(divider, inputPanel, responsePanel);
 
     setTimeout(() => textarea.focus(), 50);
@@ -1286,6 +1347,74 @@
     });
   }
 
+  // ===================== Edge Resize =====================
+
+  function initEdgeResize() {
+    const dirs = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
+    let resizeDir = null;
+    let startX, startY, startW, startH, startLeft, startTop;
+    const MIN_W = 420;
+    const MIN_H = 280;
+
+    dirs.forEach((dir) => {
+      const handle = document.createElement('div');
+      handle.className = `resize-handle resize-${dir}`;
+      modal.appendChild(handle);
+
+      handle.addEventListener('mousedown', (e) => {
+        resizeDir = dir;
+        const rect = modal.getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        startW = rect.width;
+        startH = rect.height;
+        startLeft = rect.left;
+        startTop = rect.top;
+
+        if (!hasBeenDragged) {
+          modal.style.left = rect.left + 'px';
+          modal.style.top = rect.top + 'px';
+          hasBeenDragged = true;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!resizeDir) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      let newW = startW;
+      let newH = startH;
+      let newLeft = startLeft;
+      let newTop = startTop;
+
+      if (resizeDir.includes('e')) newW = Math.max(MIN_W, startW + dx);
+      if (resizeDir.includes('w')) {
+        newW = Math.max(MIN_W, startW - dx);
+        newLeft = startLeft + (startW - newW);
+      }
+      if (resizeDir.includes('s')) newH = Math.max(MIN_H, startH + dy);
+      if (resizeDir.includes('n')) {
+        newH = Math.max(MIN_H, startH - dy);
+        newTop = startTop + (startH - newH);
+      }
+
+      modal.style.width = newW + 'px';
+      modal.style.height = newH + 'px';
+      modal.style.left = newLeft + 'px';
+      modal.style.top = newTop + 'px';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mouseup', () => {
+      resizeDir = null;
+    });
+  }
+
   // ===================== Divider Resize =====================
 
   function initDividerResize(divider, leftPanel, rightPanel) {
@@ -1305,8 +1434,8 @@
       const divW = 7;
       const minPanel = 200;
 
-      let leftW = Math.max(minPanel, Math.min(offset, total - divW - minPanel));
-      let rightW = total - leftW - divW;
+      const leftW = Math.max(minPanel, Math.min(offset, total - divW - minPanel));
+      const rightW = total - leftW - divW;
 
       leftPanel.style.flex = 'none';
       leftPanel.style.width = leftW + 'px';
@@ -1332,7 +1461,7 @@
         sendResponse({ ok: true });
       }
     });
-  } catch { /* context invalidated on load — page needs refresh */ }
+  } catch {}
 
   // ===================== Init =====================
 
@@ -1343,5 +1472,5 @@
       if (!isContextValid()) return;
       apiKey = result[STORAGE_KEY] || '';
     });
-  } catch { /* context invalidated */ }
+  } catch {}
 })();
