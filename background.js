@@ -1,11 +1,15 @@
 chrome.action.onClicked.addListener(async (tab) => {
   try {
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['content.js'],
-    });
-  } catch (err) {
-    console.warn('Content Summarizer: Cannot inject into this page.', err.message);
+    await chrome.tabs.sendMessage(tab.id, { type: 'toggle-modal' });
+  } catch {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js'],
+      });
+    } catch (err) {
+      console.warn('Content Summarizer: Cannot inject into this page.', err.message);
+    }
   }
 });
 

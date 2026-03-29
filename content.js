@@ -2,14 +2,16 @@
   'use strict';
 
   const STORAGE_KEY = 'CONTENT_SUMMARIZER_OPENAI_TOKEN';
-  const MODAL_ID = 'content-summarizer-ext-root';
+  const INJECTED_ID = 'cs-ext-injected';
+  const POPOVER_ID = 'cs-ext-popover';
+  const MODAL_ID = 'cs-ext-modal';
 
-  // --- Toggle if already injected ---
-  const existing = document.getElementById(MODAL_ID);
-  if (existing) {
-    existing.style.display = existing.style.display === 'none' ? '' : 'none';
-    return;
-  }
+  if (document.getElementById(INJECTED_ID)) return;
+
+  const marker = document.createElement('div');
+  marker.id = INJECTED_ID;
+  marker.style.display = 'none';
+  document.body.appendChild(marker);
 
   // ===================== Markdown Parser =====================
 
@@ -140,9 +142,9 @@
     return result.join('\n');
   }
 
-  // ===================== CSS =====================
+  // ===================== Modal CSS =====================
 
-  const CSS = `
+  const MODAL_CSS = `
     :host { all: initial; }
 
     * {
@@ -215,8 +217,6 @@
     .header-btn:hover {
       background: rgba(255,255,255,0.35);
     }
-
-    /* ===== Modal Body ===== */
 
     .modal-body {
       display: flex;
@@ -557,8 +557,6 @@
 
     .response-content del { color: #999; }
 
-    /* ===== Placeholder ===== */
-
     .placeholder-text {
       display: flex;
       align-items: center;
@@ -570,8 +568,6 @@
       padding: 24px;
       line-height: 1.6;
     }
-
-    /* ===== Loading ===== */
 
     .loading-state {
       display: flex;
@@ -602,8 +598,6 @@
       font-weight: 600;
     }
 
-    /* ===== Error ===== */
-
     .error-text {
       color: #c62828;
       background: #FFEBEE;
@@ -614,8 +608,6 @@
       font-size: 13px;
       line-height: 1.5;
     }
-
-    /* ===== Animation ===== */
 
     .modal-enter {
       animation: cs-fadeIn 0.22s ease-out;
@@ -633,54 +625,220 @@
   let rawResponse = '';
   let isLoading = false;
   let hasBeenDragged = false;
+  let pendingText = '';
+  let lastSelectedText = '';
 
-  // ===================== Root & Shadow DOM =====================
-
-  const root = document.createElement('div');
-  root.id = MODAL_ID;
-  root.style.cssText = 'all: initial; position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 2147483647;';
-
-  const shadow = root.attachShadow({ mode: 'open' });
-
-  const styleEl = document.createElement('style');
-  styleEl.textContent = CSS;
-  shadow.appendChild(styleEl);
-
-  // ===================== Build Modal =====================
-
-  const modal = document.createElement('div');
-  modal.className = 'modal modal-enter';
-
+  // Modal DOM refs (created lazily)
+  let modalRoot = null;
+  let modalShadow = null;
+  let modal = null;
+  let modalHeader = null;
+  let modalBody = null;
   const INIT_W = 560;
   const INIT_H = 500;
-  modal.style.left = (window.innerWidth - INIT_W) / 2 + 'px';
-  modal.style.top = (window.innerHeight - INIT_H) / 2 + 'px';
-  modal.style.width = INIT_W + 'px';
-  modal.style.height = INIT_H + 'px';
 
-  // --- Header ---
-  const header = document.createElement('div');
-  header.className = 'modal-header';
-  header.innerHTML = `
-    <span class="modal-title">Content Summarizer</span>
-    <div class="header-actions">
-      <button class="header-btn settings-btn" title="API Key Settings">⚙</button>
-      <button class="header-btn close-btn" title="Close">✕</button>
-    </div>
-  `;
-  modal.appendChild(header);
+  // ===================== Selection Popover =====================
 
-  // --- Body container ---
-  const body = document.createElement('div');
-  body.className = 'modal-body';
-  modal.appendChild(body);
+  function setupPopover() {
+    const host = document.createElement('div');
+    host.id = POPOVER_ID;
+    host.style.cssText =
+      'all:initial; position:fixed; top:0; left:0; width:0; height:0; z-index:2147483646; pointer-events:none;';
 
-  shadow.appendChild(modal);
+    const pShadow = host.attachShadow({ mode: 'open' });
+
+    const style = document.createElement('style');
+    style.textContent = `
+      .cs-popover {
+        position: fixed;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2.5px solid #66BB6A;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.14), 0 0 0 1px rgba(102,187,106,0.1);
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        pointer-events: auto;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      }
+      .cs-popover:hover {
+        transform: scale(1.15);
+        box-shadow: 0 6px 24px rgba(76,175,80,0.35);
+        border-color: #43A047;
+      }
+      .cs-popover.visible {
+        display: flex;
+        animation: csPop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .cs-popover img {
+        width: 22px;
+        height: 22px;
+        pointer-events: none;
+        border-radius: 2px;
+      }
+      @keyframes csPop {
+        from { opacity: 0; transform: scale(0.4); }
+        to   { opacity: 1; transform: scale(1); }
+      }
+    `;
+    pShadow.appendChild(style);
+
+    const btn = document.createElement('button');
+    btn.className = 'cs-popover';
+    btn.title = 'Summarize selection';
+    const img = document.createElement('img');
+    img.src = chrome.runtime.getURL('icons/icon48.png');
+    img.alt = 'Summarize';
+    btn.appendChild(img);
+    pShadow.appendChild(btn);
+
+    document.body.appendChild(host);
+
+    // --- Show popover near selection on mouseup ---
+    document.addEventListener('mouseup', (e) => {
+      if (e.composedPath().includes(host)) return;
+      if (modalRoot && e.composedPath().includes(modalRoot)) return;
+
+      setTimeout(() => {
+        const sel = window.getSelection();
+        const text = sel ? sel.toString().trim() : '';
+
+        if (text.length > 2) {
+          lastSelectedText = text;
+          const range = sel.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+
+          let left = rect.right + 8;
+          let top = rect.top + rect.height / 2 - 19;
+
+          if (left + 42 > window.innerWidth) left = rect.left - 48;
+          if (left < 4) left = 4;
+          if (top < 4) top = 4;
+          if (top + 38 > window.innerHeight) top = window.innerHeight - 42;
+
+          btn.style.left = left + 'px';
+          btn.style.top = top + 'px';
+          btn.classList.add('visible');
+        } else {
+          btn.classList.remove('visible');
+        }
+      }, 10);
+    });
+
+    // --- Hide popover on mousedown elsewhere ---
+    document.addEventListener('mousedown', (e) => {
+      if (e.composedPath().includes(host)) return;
+      btn.classList.remove('visible');
+    });
+
+    // --- Hide on scroll ---
+    document.addEventListener('scroll', () => {
+      btn.classList.remove('visible');
+    }, true);
+
+    // --- Click popover → open modal with selected text ---
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      btn.classList.remove('visible');
+      openModal(lastSelectedText);
+      lastSelectedText = '';
+    });
+  }
+
+  // ===================== Modal: Lazy Creation =====================
+
+  function ensureModal() {
+    if (modalRoot) return;
+
+    modalRoot = document.createElement('div');
+    modalRoot.id = MODAL_ID;
+    modalRoot.style.cssText =
+      'all:initial; position:fixed; top:0; left:0; width:0; height:0; z-index:2147483647;';
+    modalRoot.style.display = 'none';
+
+    modalShadow = modalRoot.attachShadow({ mode: 'open' });
+
+    const styleEl = document.createElement('style');
+    styleEl.textContent = MODAL_CSS;
+    modalShadow.appendChild(styleEl);
+
+    modal = document.createElement('div');
+    modal.className = 'modal modal-enter';
+    modal.style.left = (window.innerWidth - INIT_W) / 2 + 'px';
+    modal.style.top = (window.innerHeight - INIT_H) / 2 + 'px';
+    modal.style.width = INIT_W + 'px';
+    modal.style.height = INIT_H + 'px';
+
+    modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
+    modalHeader.innerHTML = `
+      <span class="modal-title">Content Summarizer</span>
+      <div class="header-actions">
+        <button class="header-btn settings-btn" title="API Key Settings">⚙</button>
+        <button class="header-btn close-btn" title="Close">✕</button>
+      </div>
+    `;
+    modal.appendChild(modalHeader);
+
+    modalBody = document.createElement('div');
+    modalBody.className = 'modal-body';
+    modal.appendChild(modalBody);
+
+    modalShadow.appendChild(modal);
+    document.body.appendChild(modalRoot);
+
+    // Header events
+    modalHeader.querySelector('.close-btn').addEventListener('click', () => {
+      modalRoot.style.display = 'none';
+    });
+
+    modalHeader.querySelector('.settings-btn').addEventListener('click', () => {
+      const currentW = parseFloat(modal.style.width);
+      if (currentW > INIT_W) {
+        modal.style.transition = 'width 0.3s ease';
+        modal.style.width = INIT_W + 'px';
+        setTimeout(() => (modal.style.transition = ''), 320);
+      }
+      showKeyView();
+    });
+
+    initDrag();
+  }
+
+  // ===================== Open / Toggle =====================
+
+  function openModal(prefillText) {
+    pendingText = prefillText || '';
+    ensureModal();
+    modalRoot.style.display = '';
+
+    chrome.storage.local.get([STORAGE_KEY], (result) => {
+      apiKey = result[STORAGE_KEY] || '';
+      if (apiKey) {
+        showMainView();
+      } else {
+        showKeyView();
+      }
+    });
+  }
+
+  function toggleModal() {
+    if (!modalRoot || modalRoot.style.display === 'none') {
+      openModal('');
+    } else {
+      modalRoot.style.display = 'none';
+    }
+  }
 
   // ===================== Views =====================
 
   function showKeyView(errorMsg) {
-    body.innerHTML = '';
+    modalBody.innerHTML = '';
     const view = document.createElement('div');
     view.className = 'key-view';
     view.innerHTML = `
@@ -691,7 +849,7 @@
       <span class="error-msg">${errorMsg || ''}</span>
       <button class="save-btn">Save & Continue</button>
     `;
-    body.appendChild(view);
+    modalBody.appendChild(view);
 
     const input = view.querySelector('.key-input');
     const errSpan = view.querySelector('.error-msg');
@@ -719,9 +877,9 @@
   }
 
   function showMainView() {
-    body.innerHTML = '';
+    modalBody.innerHTML = '';
 
-    // --- Left: Input panel ---
+    // --- Input panel ---
     const inputPanel = document.createElement('div');
     inputPanel.className = 'input-panel';
     inputPanel.innerHTML = `
@@ -736,15 +894,15 @@
         <button class="btn btn-clear">Clear</button>
       </div>
     `;
-    body.appendChild(inputPanel);
+    modalBody.appendChild(inputPanel);
 
-    // --- Divider (hidden until response) ---
+    // --- Divider ---
     const divider = document.createElement('div');
     divider.className = 'divider';
     divider.style.display = 'none';
-    body.appendChild(divider);
+    modalBody.appendChild(divider);
 
-    // --- Right: Response panel (hidden until response) ---
+    // --- Response panel ---
     const responsePanel = document.createElement('div');
     responsePanel.className = 'response-panel';
     responsePanel.style.display = 'none';
@@ -757,7 +915,7 @@
         <div class="placeholder-text">Your summary will appear here...</div>
       </div>
     `;
-    body.appendChild(responsePanel);
+    modalBody.appendChild(responsePanel);
 
     // --- Refs ---
     const textarea = inputPanel.querySelector('.content-input');
@@ -767,7 +925,13 @@
     const copyBtn = responsePanel.querySelector('.copy-btn');
     const responseContent = responsePanel.querySelector('.response-content');
 
-    // If there was a previous response, show it
+    // Prefill textarea with selected text if available
+    if (pendingText) {
+      textarea.value = pendingText;
+      pendingText = '';
+    }
+
+    // Restore previous response if exists
     if (rawResponse) {
       expandWithResponse(divider, responsePanel);
       responseContent.innerHTML = parseMarkdown(rawResponse);
@@ -821,7 +985,7 @@
       }
     });
 
-    // --- Clear (only clears input, NOT response) ---
+    // --- Clear (only input, NOT response) ---
     clearBtn.addEventListener('click', () => {
       textarea.value = '';
       textarea.focus();
@@ -830,34 +994,36 @@
     // --- Copy ---
     copyBtn.addEventListener('click', () => {
       if (!rawResponse) return;
-      navigator.clipboard.writeText(rawResponse).then(() => {
-        copyBtn.classList.add('copied');
-        copyBtn.textContent = '✓ Copied!';
-        setTimeout(() => {
-          copyBtn.classList.remove('copied');
-          copyBtn.innerHTML = '📋 Copy';
-        }, 1800);
-      }).catch(() => {
-        const tmp = document.createElement('textarea');
-        tmp.value = rawResponse;
-        tmp.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
-        document.body.appendChild(tmp);
-        tmp.select();
-        document.execCommand('copy');
-        document.body.removeChild(tmp);
-        copyBtn.classList.add('copied');
-        copyBtn.textContent = '✓ Copied!';
-        setTimeout(() => {
-          copyBtn.classList.remove('copied');
-          copyBtn.innerHTML = '📋 Copy';
-        }, 1800);
-      });
+      navigator.clipboard
+        .writeText(rawResponse)
+        .then(() => {
+          showCopiedFeedback(copyBtn);
+        })
+        .catch(() => {
+          const tmp = document.createElement('textarea');
+          tmp.value = rawResponse;
+          tmp.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
+          document.body.appendChild(tmp);
+          tmp.select();
+          document.execCommand('copy');
+          document.body.removeChild(tmp);
+          showCopiedFeedback(copyBtn);
+        });
     });
 
     // --- Resizable divider ---
     initDividerResize(divider, inputPanel, responsePanel);
 
     setTimeout(() => textarea.focus(), 50);
+  }
+
+  function showCopiedFeedback(btn) {
+    btn.classList.add('copied');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '📋 Copy';
+    }, 1800);
   }
 
   // ===================== Expand Modal for Response =====================
@@ -885,12 +1051,12 @@
 
   // ===================== Drag =====================
 
-  (function initDrag() {
+  function initDrag() {
     let dragging = false;
     let offsetX = 0;
     let offsetY = 0;
 
-    header.addEventListener('mousedown', (e) => {
+    modalHeader.addEventListener('mousedown', (e) => {
       if (e.target.closest('.header-btn')) return;
       dragging = true;
 
@@ -916,7 +1082,7 @@
     document.addEventListener('mouseup', () => {
       dragging = false;
     });
-  })();
+  }
 
   // ===================== Divider Resize =====================
 
@@ -931,7 +1097,7 @@
 
     document.addEventListener('mousemove', (e) => {
       if (!resizing) return;
-      const bodyRect = body.getBoundingClientRect();
+      const bodyRect = modalBody.getBoundingClientRect();
       const offset = e.clientX - bodyRect.left;
       const total = bodyRect.width;
       const divW = 7;
@@ -955,32 +1121,20 @@
     });
   }
 
-  // ===================== Header Buttons =====================
+  // ===================== Message Listener =====================
 
-  header.querySelector('.close-btn').addEventListener('click', () => {
-    root.style.display = 'none';
-  });
-
-  header.querySelector('.settings-btn').addEventListener('click', () => {
-    const currentW = parseFloat(modal.style.width);
-    if (currentW > INIT_W) {
-      modal.style.transition = 'width 0.3s ease';
-      modal.style.width = INIT_W + 'px';
-      setTimeout(() => (modal.style.transition = ''), 320);
+  chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+    if (request.type === 'toggle-modal') {
+      toggleModal();
+      sendResponse({ ok: true });
     }
-    showKeyView();
   });
 
   // ===================== Init =====================
 
-  document.body.appendChild(root);
+  setupPopover();
 
   chrome.storage.local.get([STORAGE_KEY], (result) => {
     apiKey = result[STORAGE_KEY] || '';
-    if (apiKey) {
-      showMainView();
-    } else {
-      showKeyView();
-    }
   });
 })();
