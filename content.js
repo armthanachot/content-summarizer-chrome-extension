@@ -941,6 +941,10 @@
       showKeyView();
     });
 
+    ['keydown', 'keypress', 'keyup'].forEach((evtType) => {
+      modal.addEventListener(evtType, (e) => e.stopPropagation());
+    });
+
     initDrag();
     initEdgeResize();
   }
