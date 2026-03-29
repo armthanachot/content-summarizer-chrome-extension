@@ -20,6 +20,13 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
+
+  if (request.type === 'translate') {
+    translateContent(request.apiKey, request.content, request.targetLang)
+      .then((result) => sendResponse({ success: true, data: result }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
 });
 
 async function callOpenAI(apiKey, content, maxWords) {
@@ -43,6 +50,38 @@ async function callOpenAI(apiKey, content, maxWords) {
         { role: 'user', content: `Please summarize the following content:\n\n${content}` },
       ],
       temperature: 0.5,
+      max_tokens: 4096,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(
+      errorBody.error?.message || `API request failed with status ${response.status}`
+    );
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+async function translateContent(apiKey, content, targetLang) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a translator. Translate the following markdown content to ${targetLang}. Maintain the exact same markdown formatting, structure, headers, bullet points, and layout. Only translate the text content, do not alter code blocks or URLs.`,
+        },
+        { role: 'user', content },
+      ],
+      temperature: 0.3,
       max_tokens: 4096,
     }),
   });

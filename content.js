@@ -6,12 +6,32 @@
   const POPOVER_ID = 'cs-ext-popover';
   const MODAL_ID = 'cs-ext-modal';
 
+  const LANGUAGES = [
+    { code: 'th', name: 'ไทย', flag: '🇹🇭' },
+    { code: 'en', name: 'English', flag: '🇺🇸' },
+  ];
+
   if (document.getElementById(INJECTED_ID)) return;
 
   const marker = document.createElement('div');
   marker.id = INJECTED_ID;
   marker.style.display = 'none';
   document.body.appendChild(marker);
+
+  function isContextValid() {
+    try {
+      return !!chrome.runtime?.id;
+    } catch {
+      return false;
+    }
+  }
+
+  function cleanup() {
+    [INJECTED_ID, POPOVER_ID, MODAL_ID].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+  }
 
   // ===================== Markdown Parser =====================
 
@@ -480,6 +500,89 @@
       border-color: #43A047;
     }
 
+    .response-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ===== Translate ===== */
+
+    .translate-wrapper {
+      position: relative;
+    }
+
+    .translate-btn {
+      padding: 4px 8px;
+      border: 1.5px solid #C8E6C9;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .translate-btn:hover {
+      background: #E8F5E9;
+      border-color: #81C784;
+    }
+
+    .translate-btn img {
+      width: 20px;
+      height: 20px;
+      pointer-events: none;
+    }
+
+    .translate-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: #fff;
+      border: 1.5px solid #C8E6C9;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      min-width: 160px;
+      z-index: 10;
+      overflow: hidden;
+      animation: csDropIn 0.15s ease-out;
+    }
+
+    @keyframes csDropIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .translate-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      font-size: 13px;
+      font-family: inherit;
+      color: #2E3A2E;
+      cursor: pointer;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      transition: background 0.15s;
+    }
+
+    .translate-option:hover {
+      background: #E8F5E9;
+    }
+
+    .translate-option .flag {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .translate-option .lang-name {
+      font-weight: 500;
+    }
+
     .response-content {
       flex: 1;
       overflow-y: auto;
@@ -623,6 +726,7 @@
 
   let apiKey = '';
   let rawResponse = '';
+  let originalResponse = '';
   let isLoading = false;
   let hasBeenDragged = false;
   let pendingText = '';
@@ -691,7 +795,7 @@
     btn.className = 'cs-popover';
     btn.title = 'Summarize selection';
     const img = document.createElement('img');
-    img.src = chrome.runtime.getURL('icons/icon48.png');
+    try { img.src = chrome.runtime.getURL('icons/icon48.png'); } catch { /* context invalidated */ }
     img.alt = 'Summarize';
     btn.appendChild(img);
     pShadow.appendChild(btn);
@@ -700,6 +804,7 @@
 
     // --- Show popover near selection on mouseup ---
     document.addEventListener('mouseup', (e) => {
+      if (!isContextValid()) { cleanup(); return; }
       if (e.composedPath().includes(host)) return;
       if (modalRoot && e.composedPath().includes(modalRoot)) return;
 
@@ -744,6 +849,7 @@
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (!isContextValid()) { cleanup(); return; }
       btn.classList.remove('visible');
       openModal(lastSelectedText);
       lastSelectedText = '';
@@ -813,18 +919,22 @@
   // ===================== Open / Toggle =====================
 
   function openModal(prefillText) {
+    if (!isContextValid()) { cleanup(); return; }
     pendingText = prefillText || '';
     ensureModal();
     modalRoot.style.display = '';
 
-    chrome.storage.local.get([STORAGE_KEY], (result) => {
-      apiKey = result[STORAGE_KEY] || '';
-      if (apiKey) {
-        showMainView();
-      } else {
-        showKeyView();
-      }
-    });
+    try {
+      chrome.storage.local.get([STORAGE_KEY], (result) => {
+        if (!isContextValid()) return;
+        apiKey = result[STORAGE_KEY] || '';
+        if (apiKey) {
+          showMainView();
+        } else {
+          showKeyView();
+        }
+      });
+    } catch { cleanup(); }
   }
 
   function toggleModal() {
@@ -864,9 +974,12 @@
         return;
       }
       apiKey = val;
-      chrome.storage.local.set({ [STORAGE_KEY]: val }, () => {
-        showMainView();
-      });
+      try {
+        chrome.storage.local.set({ [STORAGE_KEY]: val }, () => {
+          if (!isContextValid()) return;
+          showMainView();
+        });
+      } catch { cleanup(); }
     });
 
     input.addEventListener('keydown', (e) => {
@@ -909,7 +1022,12 @@
     responsePanel.innerHTML = `
       <div class="response-header">
         <span class="response-title">Summary</span>
-        <button class="copy-btn">📋 Copy</button>
+        <div class="response-actions">
+          <div class="translate-wrapper">
+            <button class="translate-btn" title="Translate"></button>
+          </div>
+          <button class="copy-btn">📋 Copy</button>
+        </div>
       </div>
       <div class="response-content">
         <div class="placeholder-text">Your summary will appear here...</div>
@@ -924,6 +1042,14 @@
     const clearBtn = inputPanel.querySelector('.btn-clear');
     const copyBtn = responsePanel.querySelector('.copy-btn');
     const responseContent = responsePanel.querySelector('.response-content');
+    const translateBtn = responsePanel.querySelector('.translate-btn');
+    const translateWrapper = responsePanel.querySelector('.translate-wrapper');
+
+    // Set translate icon image
+    const translateImg = document.createElement('img');
+    try { translateImg.src = chrome.runtime.getURL('icons/translate.png'); } catch { /* context invalidated */ }
+    translateImg.alt = 'Translate';
+    translateBtn.appendChild(translateImg);
 
     // Prefill textarea with selected text if available
     if (pendingText) {
@@ -961,20 +1087,24 @@
       `;
 
       try {
+        if (!isContextValid()) throw new Error('Extension was reloaded. Please refresh the page.');
         const result = await new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage(
-            { type: 'summarize', apiKey, content, maxWords },
-            (resp) => {
-              if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-                return;
+          try {
+            chrome.runtime.sendMessage(
+              { type: 'summarize', apiKey, content, maxWords },
+              (resp) => {
+                if (chrome.runtime.lastError) {
+                  reject(new Error(chrome.runtime.lastError.message));
+                  return;
+                }
+                if (resp.success) resolve(resp.data);
+                else reject(new Error(resp.error));
               }
-              if (resp.success) resolve(resp.data);
-              else reject(new Error(resp.error));
-            }
-          );
+            );
+          } catch (e) { reject(e); }
         });
         rawResponse = result;
+        originalResponse = result;
         responseContent.innerHTML = parseMarkdown(result);
       } catch (err) {
         responseContent.innerHTML = `<div class="error-text">Error: ${escapeHtml(err.message)}</div>`;
@@ -1009,6 +1139,78 @@
           document.body.removeChild(tmp);
           showCopiedFeedback(copyBtn);
         });
+    });
+
+    // --- Translate dropdown ---
+    let dropdownOpen = false;
+
+    function closeDropdown() {
+      const existing = translateWrapper.querySelector('.translate-dropdown');
+      if (existing) existing.remove();
+      dropdownOpen = false;
+    }
+
+    translateBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!originalResponse) return;
+
+      if (dropdownOpen) {
+        closeDropdown();
+        return;
+      }
+
+      const dropdown = document.createElement('div');
+      dropdown.className = 'translate-dropdown';
+
+      LANGUAGES.forEach((lang) => {
+        const option = document.createElement('button');
+        option.className = 'translate-option';
+        option.innerHTML = `<span class="flag">${lang.flag}</span><span class="lang-name">${lang.name}</span>`;
+        option.addEventListener('click', async () => {
+          closeDropdown();
+
+          responseContent.innerHTML = `
+            <div class="loading-state">
+              <div class="spinner"></div>
+              <span>Translating to ${lang.flag} ${lang.name}...</span>
+            </div>
+          `;
+
+          try {
+            if (!isContextValid()) throw new Error('Extension was reloaded. Please refresh the page.');
+            const result = await new Promise((resolve, reject) => {
+              try {
+                chrome.runtime.sendMessage(
+                  { type: 'translate', apiKey, content: originalResponse, targetLang: lang.name },
+                  (resp) => {
+                    if (chrome.runtime.lastError) {
+                      reject(new Error(chrome.runtime.lastError.message));
+                      return;
+                    }
+                    if (resp.success) resolve(resp.data);
+                    else reject(new Error(resp.error));
+                  }
+                );
+              } catch (e) { reject(e); }
+            });
+            rawResponse = result;
+            responseContent.innerHTML = parseMarkdown(result);
+          } catch (err) {
+            responseContent.innerHTML = `<div class="error-text">Translation error: ${escapeHtml(err.message)}</div>`;
+          }
+        });
+        dropdown.appendChild(option);
+      });
+
+      translateWrapper.appendChild(dropdown);
+      dropdownOpen = true;
+    });
+
+    // Close dropdown when clicking outside
+    modalShadow.addEventListener('click', (e) => {
+      if (dropdownOpen && !e.composedPath().includes(translateWrapper)) {
+        closeDropdown();
+      }
     });
 
     // --- Resizable divider ---
@@ -1123,18 +1325,23 @@
 
   // ===================== Message Listener =====================
 
-  chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-    if (request.type === 'toggle-modal') {
-      toggleModal();
-      sendResponse({ ok: true });
-    }
-  });
+  try {
+    chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+      if (request.type === 'toggle-modal') {
+        toggleModal();
+        sendResponse({ ok: true });
+      }
+    });
+  } catch { /* context invalidated on load — page needs refresh */ }
 
   // ===================== Init =====================
 
   setupPopover();
 
-  chrome.storage.local.get([STORAGE_KEY], (result) => {
-    apiKey = result[STORAGE_KEY] || '';
-  });
+  try {
+    chrome.storage.local.get([STORAGE_KEY], (result) => {
+      if (!isContextValid()) return;
+      apiKey = result[STORAGE_KEY] || '';
+    });
+  } catch { /* context invalidated */ }
 })();
