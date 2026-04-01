@@ -582,12 +582,18 @@
       padding: 12px 16px;
       border-bottom: 1px solid #C8E6C9;
       flex-shrink: 0;
+      min-width: 0;
     }
 
     .response-title {
       font-size: 14px;
       font-weight: 700;
       color: #2E7D32;
+      flex-shrink: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .copy-btn {
@@ -621,6 +627,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      flex-shrink: 0;
     }
 
     /* ===== Translate ===== */
@@ -700,14 +707,56 @@
       font-weight: 500;
     }
 
+    /* ===== Input Language Select ===== */
+
+    .lang-select-wrapper {
+      position: relative;
+    }
+
+    .lang-select-btn {
+      padding: 6px 12px;
+      border: 2px solid #C8E6C9;
+      border-radius: 6px;
+      background: #FAFFF5;
+      color: #2E3A2E;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .lang-select-btn:hover {
+      border-color: #81C784;
+      background: #E8F5E9;
+    }
+
+    .lang-select-dropdown {
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 0;
+      background: #fff;
+      border: 1.5px solid #C8E6C9;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      min-width: 160px;
+      z-index: 10;
+      overflow: hidden;
+      animation: csDropIn 0.15s ease-out;
+    }
+
     .response-content {
       flex: 1;
-      overflow-y: auto;
+      overflow: auto;
       padding: 16px;
       line-height: 1.75;
     }
 
-    .response-content::-webkit-scrollbar { width: 6px; }
+    .response-content::-webkit-scrollbar { width: 6px; height: 6px; }
     .response-content::-webkit-scrollbar-track { background: transparent; }
     .response-content::-webkit-scrollbar-thumb { background: #C8E6C9; border-radius: 3px; }
     .response-content::-webkit-scrollbar-thumb:hover { background: #A5D6A7; }
@@ -864,6 +913,7 @@
   let hasBeenDragged = false;
   let pendingText = '';
   let lastSelectedText = '';
+  let responseCache = {};
 
   let modalRoot = null;
   let modalShadow = null;
@@ -1174,6 +1224,12 @@
         <input type="number" class="response-length" placeholder="words" min="1" />
         <span class="hint">(optional)</span>
       </div>
+      <div class="option-row">
+        <label>Output language:</label>
+        <div class="lang-select-wrapper">
+          <button type="button" class="lang-select-btn">🌐 Auto ▾</button>
+        </div>
+      </div>
       <div class="btn-row">
         <button class="btn btn-summarize">Summarize</button>
         <button class="btn btn-clear">Clear</button>
@@ -1221,6 +1277,54 @@
     const translateWrapper = responsePanel.querySelector('.translate-wrapper');
 
     let inputMode = 'text';
+
+    const langSelectBtn = inputPanel.querySelector('.lang-select-btn');
+    const langSelectWrapper = inputPanel.querySelector('.lang-select-wrapper');
+    let selectedLang = 'auto';
+    let langDropdownOpen = false;
+
+    function closeLangDropdown() {
+      const dd = langSelectWrapper.querySelector('.lang-select-dropdown');
+      if (dd) dd.remove();
+      langDropdownOpen = false;
+    }
+
+    langSelectBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (langDropdownOpen) {
+        closeLangDropdown();
+        return;
+      }
+      closeDropdown();
+
+      const dropdown = document.createElement('div');
+      dropdown.className = 'lang-select-dropdown';
+
+      const autoOpt = document.createElement('button');
+      autoOpt.className = 'translate-option';
+      autoOpt.innerHTML = '<span class="flag">🌐</span><span class="lang-name">Auto</span>';
+      autoOpt.addEventListener('click', () => {
+        selectedLang = 'auto';
+        langSelectBtn.textContent = '🌐 Auto ▾';
+        closeLangDropdown();
+      });
+      dropdown.appendChild(autoOpt);
+
+      LANGUAGES.forEach((lang) => {
+        const option = document.createElement('button');
+        option.className = 'translate-option';
+        option.innerHTML = `<span class="flag">${lang.flag}</span><span class="lang-name">${lang.name}</span>`;
+        option.addEventListener('click', () => {
+          selectedLang = lang.code;
+          langSelectBtn.textContent = `${lang.flag} ${lang.name} ▾`;
+          closeLangDropdown();
+        });
+        dropdown.appendChild(option);
+      });
+
+      langSelectWrapper.appendChild(dropdown);
+      langDropdownOpen = true;
+    });
 
     const translateImg = document.createElement('img');
     try {
@@ -1296,6 +1400,12 @@
 
       messagePayload.maxWords = parseInt(lengthInput.value, 10) || 0;
 
+      if (selectedLang !== 'auto') {
+        const lang = LANGUAGES.find(l => l.code === selectedLang);
+        if (lang) messagePayload.targetLang = lang.name;
+      }
+
+      responseCache = {};
       isLoading = true;
       summarizeBtn.disabled = true;
       summarizeBtn.textContent = 'Summarizing...';
@@ -1334,6 +1444,7 @@
         });
         rawResponse = result;
         originalResponse = result;
+        responseCache['original'] = result;
         responseContent.innerHTML = parseMarkdown(result);
       } catch (err) {
         responseContent.innerHTML = `<div class="error-text">Error: ${escapeHtml(err.message)}</div>`;
@@ -1406,6 +1517,12 @@
         option.addEventListener('click', async () => {
           closeDropdown();
 
+          if (responseCache[lang.code]) {
+            rawResponse = responseCache[lang.code];
+            responseContent.innerHTML = parseMarkdown(rawResponse);
+            return;
+          }
+
           responseContent.innerHTML = `
             <div class="loading-state">
               <div class="spinner"></div>
@@ -1445,6 +1562,7 @@
               }
             });
             rawResponse = result;
+            responseCache[lang.code] = result;
             responseContent.innerHTML = parseMarkdown(result);
           } catch (err) {
             responseContent.innerHTML = `<div class="error-text">Translation error: ${escapeHtml(err.message)}</div>`;
@@ -1460,6 +1578,9 @@
     dropdownClickHandler = (e) => {
       if (dropdownOpen && !e.composedPath().includes(translateWrapper)) {
         closeDropdown();
+      }
+      if (langDropdownOpen && !e.composedPath().includes(langSelectWrapper)) {
+        closeLangDropdown();
       }
     };
     modalShadow.addEventListener('click', dropdownClickHandler);

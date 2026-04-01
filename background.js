@@ -15,7 +15,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.type === 'summarize') {
-    callOpenAI(request.apiKey, request.content, request.maxWords)
+    callOpenAI(request.apiKey, request.content, request.maxWords, request.targetLang)
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
@@ -29,14 +29,14 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   }
 
   if (request.type === 'summarize-url') {
-    fetchAndSummarize(request.apiKey, request.url, request.maxWords)
+    fetchAndSummarize(request.apiKey, request.url, request.maxWords, request.targetLang)
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
 });
 
-async function callOpenAI(apiKey, content, maxWords) {
+async function callOpenAI(apiKey, content, maxWords, targetLang) {
   let systemPrompt = `You are an expert content analyst and summarizer. Follow this process:
 
 1. **Understand Context First**: Before summarizing, identify the topic, domain (e.g. technology, business, science, education), target audience, and key themes of the content.
@@ -54,6 +54,10 @@ Your summary MUST:
 
   if (maxWords && maxWords > 0) {
     systemPrompt += `\n- Keep your response within ${maxWords} words.`;
+  }
+
+  if (targetLang) {
+    systemPrompt += `\n- Write the entire summary in ${targetLang}.`;
   }
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -130,7 +134,7 @@ Translation rules:
   return data.choices[0].message.content;
 }
 
-async function fetchAndSummarize(apiKey, url, maxWords) {
+async function fetchAndSummarize(apiKey, url, maxWords, targetLang) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
 
@@ -161,7 +165,7 @@ async function fetchAndSummarize(apiKey, url, maxWords) {
     );
   }
 
-  return callOpenAI(apiKey, text, maxWords);
+  return callOpenAI(apiKey, text, maxWords, targetLang);
 }
 
 function extractTextFromHtml(html) {

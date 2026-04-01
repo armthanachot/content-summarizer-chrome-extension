@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Content Summarizer",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Summarize any content using OpenAI GPT-4o mini with beautiful markdown rendering",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": ["<all_urls>"],
