@@ -426,9 +426,26 @@
       border: 2px solid #C8E6C9;
     }
 
-    .btn-clear:hover {
+    .btn-clear:hover:not(:disabled) {
       background: #F1F8E9;
       border-color: #81C784;
+    }
+
+    .btn-clear:disabled,
+    .toggle-option:disabled,
+    .lang-select-btn:disabled,
+    .translate-btn:disabled,
+    .copy-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .content-input:disabled,
+    .option-row input[type="number"]:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      background: #EDF7ED;
+      border-color: #C8E6C9;
     }
 
     /* ===== Input Toggle ===== */
@@ -1407,7 +1424,7 @@
 
       responseCache = {};
       isLoading = true;
-      summarizeBtn.disabled = true;
+      setUILocked(true);
       summarizeBtn.textContent = 'Summarizing...';
 
       expandWithResponse(divider, responsePanel);
@@ -1454,8 +1471,11 @@
         }
       } finally {
         isLoading = false;
-        summarizeBtn.disabled = false;
+        setUILocked(false);
         summarizeBtn.textContent = 'Summarize';
+        if (inputMode === 'url' && urlDisplay.style.display !== 'none') {
+          urlInput.disabled = true;
+        }
       }
     });
 
@@ -1498,6 +1518,21 @@
       dropdownOpen = false;
     }
 
+    function setUILocked(locked) {
+      summarizeBtn.disabled = locked;
+      clearBtn.disabled = locked;
+      langSelectBtn.disabled = locked;
+      translateBtn.disabled = locked;
+      copyBtn.disabled = locked;
+      textarea.disabled = locked;
+      lengthInput.disabled = locked;
+      toggleBtns.forEach(b => b.disabled = locked);
+      if (locked) {
+        closeLangDropdown();
+        closeDropdown();
+      }
+    }
+
     translateBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (!originalResponse) return;
@@ -1523,6 +1558,7 @@
             return;
           }
 
+          setUILocked(true);
           responseContent.innerHTML = `
             <div class="loading-state">
               <div class="spinner"></div>
@@ -1566,6 +1602,11 @@
             responseContent.innerHTML = parseMarkdown(result);
           } catch (err) {
             responseContent.innerHTML = `<div class="error-text">Translation error: ${escapeHtml(err.message)}</div>`;
+          } finally {
+            setUILocked(false);
+            if (inputMode === 'url' && urlDisplay.style.display !== 'none') {
+              urlInput.disabled = true;
+            }
           }
         });
         dropdown.appendChild(option);
