@@ -5,6 +5,7 @@
   const INJECTED_ID = 'cs-ext-injected';
   const POPOVER_ID = 'cs-ext-popover';
   const MODAL_ID = 'cs-ext-modal';
+  const FAB_ID = 'cs-ext-fab';
 
   const LANGUAGES = [
     { code: 'th', name: 'ไทย', flag: '🇹🇭' },
@@ -29,7 +30,7 @@
         return;
       }
     } catch {}
-    [INJECTED_ID, POPOVER_ID, MODAL_ID].forEach((id) => {
+    [INJECTED_ID, POPOVER_ID, MODAL_ID, FAB_ID].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.remove();
     });
@@ -1806,6 +1807,135 @@
     });
   }
 
+  // ===================== Floating Action Button =====================
+
+  function setupFloatingButton() {
+    const host = document.createElement('div');
+    host.id = FAB_ID;
+    host.style.cssText =
+      'all:initial; position:fixed; top:0; left:0; width:0; height:0; z-index:2147483645; pointer-events:none;';
+
+    const fabShadow = host.attachShadow({ mode: 'open' });
+
+    const style = document.createElement('style');
+    style.textContent = `
+      .cs-fab {
+        position: fixed;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #66BB6A 0%, #43A047 100%);
+        border: 2px solid rgba(255,255,255,0.25);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.04);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+        transition: box-shadow 0.25s, opacity 0.25s, border-color 0.25s;
+        opacity: 0.55;
+        padding: 0;
+        outline: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .cs-fab:hover {
+        opacity: 1;
+        box-shadow: 0 6px 24px rgba(76,175,80,0.45), 0 0 0 1px rgba(0,0,0,0.04);
+        border-color: rgba(255,255,255,0.5);
+      }
+      .cs-fab.dragging {
+        opacity: 0.9;
+        cursor: grabbing;
+        transition: none;
+        box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+      }
+      .cs-fab img {
+        width: 22px;
+        height: 22px;
+        pointer-events: none;
+        border-radius: 3px;
+        filter: brightness(0) invert(1);
+      }
+      @keyframes cs-fabIn {
+        from { opacity: 0; transform: scale(0.4); }
+        to   { opacity: 0.55; transform: scale(1); }
+      }
+      .cs-fab.enter {
+        animation: cs-fabIn 0.3s ease-out;
+      }
+    `;
+    fabShadow.appendChild(style);
+
+    const fab = document.createElement('button');
+    fab.className = 'cs-fab enter';
+    fab.title = 'Content Summarizer';
+    fab.style.right = '16px';
+    fab.style.top = (window.innerHeight / 2 - 22) + 'px';
+
+    const img = document.createElement('img');
+    try {
+      img.src = chrome.runtime.getURL('icons/icon48.png');
+    } catch {}
+    img.alt = 'Summarize';
+    fab.appendChild(img);
+    fabShadow.appendChild(fab);
+
+    document.body.appendChild(host);
+
+    let isDragging = false;
+    let hasDragged = false;
+    let dragStartX, dragStartY, fabStartLeft, fabStartTop;
+
+    fab.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      isDragging = true;
+      hasDragged = false;
+
+      const rect = fab.getBoundingClientRect();
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      fabStartLeft = rect.left;
+      fabStartTop = rect.top;
+
+      fab.classList.add('dragging');
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+
+      if (!hasDragged && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+        hasDragged = true;
+        fab.style.right = 'auto';
+        fab.style.left = fabStartLeft + 'px';
+      }
+
+      if (hasDragged) {
+        const newLeft = Math.max(0, Math.min(fabStartLeft + dx, window.innerWidth - 44));
+        const newTop = Math.max(0, Math.min(fabStartTop + dy, window.innerHeight - 44));
+        fab.style.left = newLeft + 'px';
+        fab.style.top = newTop + 'px';
+      }
+
+      e.preventDefault();
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!isDragging) return;
+      isDragging = false;
+      fab.classList.remove('dragging');
+
+      if (!hasDragged) {
+        if (!isContextValid()) return;
+        toggleModal();
+      }
+    });
+  }
+
   // ===================== Message Listener =====================
 
   try {
@@ -1820,6 +1950,7 @@
   // ===================== Init =====================
 
   setupPopover();
+  setupFloatingButton();
 
   try {
     chrome.storage.local.get([STORAGE_KEY], (result) => {
