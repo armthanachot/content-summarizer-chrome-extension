@@ -431,6 +431,112 @@
       border-color: #81C784;
     }
 
+    /* ===== Input Toggle ===== */
+
+    .input-toggle-row {
+      display: flex;
+    }
+
+    .input-toggle {
+      display: inline-flex;
+      background: #C8E6C9;
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .toggle-option {
+      padding: 6px 18px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: #558B2F;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .toggle-option.active {
+      background: #fff;
+      color: #2E7D32;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .toggle-option:hover:not(.active) {
+      background: rgba(255,255,255,0.4);
+    }
+
+    /* ===== URL Section ===== */
+
+    .url-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .url-input {
+      width: 100%;
+      border: 2px solid #A5D6A7;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: inherit;
+      font-size: 14px;
+      background: #FAFFF5;
+      color: #2E3A2E;
+      outline: none;
+      transition: border-color 0.2s, opacity 0.2s;
+    }
+
+    .url-input:focus { border-color: #43A047; }
+    .url-input::placeholder { color: #9CAF9C; }
+    .url-input:disabled { opacity: 0.55; cursor: not-allowed; background: #EDF7ED; border-color: #C8E6C9; }
+
+    .url-display {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      background: #F1F8E9;
+      border-radius: 8px;
+      border: 1.5px solid #C8E6C9;
+      animation: csDropIn 0.15s ease-out;
+    }
+
+    .url-display-text {
+      flex: 1;
+      color: #2E7D32;
+      font-size: 13px;
+      word-break: break-all;
+      line-height: 1.4;
+      min-width: 0;
+    }
+
+    .url-open-btn {
+      padding: 5px 12px;
+      background: linear-gradient(135deg, #66BB6A, #43A047);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: inherit;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .url-open-btn:hover {
+      box-shadow: 0 2px 8px rgba(76,175,80,0.35);
+      transform: translateY(-1px);
+    }
+
     /* ===== Divider ===== */
 
     .divider {
@@ -1049,7 +1155,20 @@
     const inputPanel = document.createElement('div');
     inputPanel.className = 'input-panel';
     inputPanel.innerHTML = `
+      <div class="input-toggle-row">
+        <div class="input-toggle">
+          <button class="toggle-option active" data-mode="text">📝 Text</button>
+          <button class="toggle-option" data-mode="url">🔗 URL</button>
+        </div>
+      </div>
       <textarea class="content-input" placeholder="Paste or type your content here to summarize..."></textarea>
+      <div class="url-section" style="display:none">
+        <input type="url" class="url-input" placeholder="Enter a URL to summarize (e.g., https://example.com/article)" />
+        <div class="url-display" style="display:none">
+          <span class="url-display-text"></span>
+          <button class="url-open-btn">Open ↗</button>
+        </div>
+      </div>
       <div class="option-row">
         <label>Response length:</label>
         <input type="number" class="response-length" placeholder="words" min="1" />
@@ -1090,10 +1209,18 @@
     const lengthInput = inputPanel.querySelector('.response-length');
     const summarizeBtn = inputPanel.querySelector('.btn-summarize');
     const clearBtn = inputPanel.querySelector('.btn-clear');
+    const urlSection = inputPanel.querySelector('.url-section');
+    const urlInput = inputPanel.querySelector('.url-input');
+    const urlDisplay = inputPanel.querySelector('.url-display');
+    const urlDisplayText = inputPanel.querySelector('.url-display-text');
+    const urlOpenBtn = inputPanel.querySelector('.url-open-btn');
+    const toggleBtns = inputPanel.querySelectorAll('.toggle-option');
     const copyBtn = responsePanel.querySelector('.copy-btn');
     const responseContent = responsePanel.querySelector('.response-content');
     const translateBtn = responsePanel.querySelector('.translate-btn');
     const translateWrapper = responsePanel.querySelector('.translate-wrapper');
+
+    let inputMode = 'text';
 
     const translateImg = document.createElement('img');
     try {
@@ -1107,30 +1234,80 @@
       pendingText = '';
     }
 
+    toggleBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        toggleBtns.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        inputMode = btn.dataset.mode;
+        if (inputMode === 'text') {
+          textarea.style.display = '';
+          urlSection.style.display = 'none';
+        } else {
+          textarea.style.display = 'none';
+          urlSection.style.display = '';
+        }
+      });
+    });
+
+    urlOpenBtn.addEventListener('click', () => {
+      const url = urlInput.value.trim();
+      if (url) window.open(url, '_blank');
+    });
+
+    urlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') summarizeBtn.click();
+    });
+
     if (rawResponse) {
       expandWithResponse(divider, responsePanel);
       responseContent.innerHTML = parseMarkdown(rawResponse);
     }
 
     summarizeBtn.addEventListener('click', async () => {
-      const content = textarea.value.trim();
-      if (!content) {
-        textarea.style.borderColor = '#EF5350';
-        setTimeout(() => (textarea.style.borderColor = ''), 1500);
-        return;
+      let messagePayload;
+
+      if (inputMode === 'text') {
+        const content = textarea.value.trim();
+        if (!content) {
+          textarea.style.borderColor = '#EF5350';
+          setTimeout(() => (textarea.style.borderColor = ''), 1500);
+          return;
+        }
+        messagePayload = { type: 'summarize', apiKey, content };
+      } else {
+        const url = urlInput.value.trim();
+        if (!url) {
+          urlInput.style.borderColor = '#EF5350';
+          setTimeout(() => (urlInput.style.borderColor = ''), 1500);
+          return;
+        }
+        try {
+          new URL(url);
+        } catch {
+          urlInput.style.borderColor = '#EF5350';
+          setTimeout(() => (urlInput.style.borderColor = ''), 1500);
+          return;
+        }
+        urlInput.disabled = true;
+        urlDisplayText.textContent = url;
+        urlDisplay.style.display = '';
+        messagePayload = { type: 'summarize-url', apiKey, url };
       }
 
-      const maxWords = parseInt(lengthInput.value, 10) || 0;
+      messagePayload.maxWords = parseInt(lengthInput.value, 10) || 0;
 
       isLoading = true;
       summarizeBtn.disabled = true;
       summarizeBtn.textContent = 'Summarizing...';
 
       expandWithResponse(divider, responsePanel);
+      const loadingMsg = inputMode === 'url'
+        ? 'Fetching & summarizing URL...'
+        : 'Summarizing with GPT-4o mini...';
       responseContent.innerHTML = `
         <div class="loading-state">
           <div class="spinner"></div>
-          <span>Summarizing with GPT-4o mini...</span>
+          <span>${loadingMsg}</span>
         </div>
       `;
 
@@ -1139,21 +1316,18 @@
           throw new Error('Extension was reloaded. Please refresh the page.');
         const result = await new Promise((resolve, reject) => {
           try {
-            chrome.runtime.sendMessage(
-              { type: 'summarize', apiKey, content, maxWords },
-              (resp) => {
-                if (chrome.runtime.lastError) {
-                  reject(new Error(chrome.runtime.lastError.message));
-                  return;
-                }
-                if (!resp) {
-                  reject(new Error('No response from background script.'));
-                  return;
-                }
-                if (resp.success) resolve(resp.data);
-                else reject(new Error(resp.error));
+            chrome.runtime.sendMessage(messagePayload, (resp) => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
               }
-            );
+              if (!resp) {
+                reject(new Error('No response from background script.'));
+                return;
+              }
+              if (resp.success) resolve(resp.data);
+              else reject(new Error(resp.error));
+            });
           } catch (e) {
             reject(e);
           }
@@ -1163,6 +1337,10 @@
         responseContent.innerHTML = parseMarkdown(result);
       } catch (err) {
         responseContent.innerHTML = `<div class="error-text">Error: ${escapeHtml(err.message)}</div>`;
+        if (inputMode === 'url') {
+          urlInput.disabled = false;
+          urlDisplay.style.display = 'none';
+        }
       } finally {
         isLoading = false;
         summarizeBtn.disabled = false;
@@ -1171,8 +1349,15 @@
     });
 
     clearBtn.addEventListener('click', () => {
-      textarea.value = '';
-      textarea.focus();
+      if (inputMode === 'text') {
+        textarea.value = '';
+        textarea.focus();
+      } else {
+        urlInput.value = '';
+        urlInput.disabled = false;
+        urlDisplay.style.display = 'none';
+        urlInput.focus();
+      }
     });
 
     copyBtn.addEventListener('click', () => {
@@ -1281,7 +1466,10 @@
 
     initDividerResize(divider, inputPanel, responsePanel);
 
-    setTimeout(() => textarea.focus(), 50);
+    setTimeout(() => {
+      if (inputMode === 'text') textarea.focus();
+      else urlInput.focus();
+    }, 50);
   }
 
   function showCopiedFeedback(btn) {

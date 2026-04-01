@@ -27,6 +27,13 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
+
+  if (request.type === 'summarize-url') {
+    fetchAndSummarize(request.apiKey, request.url, request.maxWords)
+      .then((result) => sendResponse({ success: true, data: result }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
 });
 
 async function callOpenAI(apiKey, content, maxWords) {
@@ -121,4 +128,81 @@ Translation rules:
 
   const data = await response.json();
   return data.choices[0].message.content;
+}
+
+async function fetchAndSummarize(apiKey, url, maxWords) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+  let response;
+  try {
+    response = await fetch(url, {
+      signal: controller.signal,
+      headers: { Accept: 'text/html,application/xhtml+xml,*/*' },
+    });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError')
+      throw new Error('Request timed out while fetching the URL.');
+    throw new Error(`Failed to fetch URL: ${err.message}`);
+  }
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch URL (HTTP ${response.status}): ${url}`);
+  }
+
+  const html = await response.text();
+  const text = extractTextFromHtml(html);
+
+  if (!text || text.trim().length < 20) {
+    throw new Error(
+      'Could not extract meaningful content from the URL. The page may be empty or require JavaScript to render.'
+    );
+  }
+
+  return callOpenAI(apiKey, text, maxWords);
+}
+
+function extractTextFromHtml(html) {
+  let text = html;
+  text = text.replace(/<script[\s\S]*?<\/script>/gi, '');
+  text = text.replace(/<style[\s\S]*?<\/style>/gi, '');
+  text = text.replace(/<noscript[\s\S]*?<\/noscript>/gi, '');
+  text = text.replace(/<nav[\s\S]*?<\/nav>/gi, '');
+  text = text.replace(/<footer[\s\S]*?<\/footer>/gi, '');
+  text = text.replace(/<header[\s\S]*?<\/header>/gi, '');
+  text = text.replace(/<aside[\s\S]*?<\/aside>/gi, '');
+  text = text.replace(/<!--[\s\S]*?-->/g, '');
+  text = text.replace(
+    /<\/(p|div|h[1-6]|li|tr|br|hr|section|article)[^>]*>/gi,
+    '\n'
+  );
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  text = text.replace(/<[^>]+>/g, ' ');
+  text = text.replace(/&nbsp;/g, ' ');
+  text = text.replace(/&amp;/g, '&');
+  text = text.replace(/&lt;/g, '<');
+  text = text.replace(/&gt;/g, '>');
+  text = text.replace(/&quot;/g, '"');
+  text = text.replace(/&#39;/g, "'");
+  text = text.replace(
+    /&#x([0-9a-fA-F]+);/g,
+    (_, hex) => String.fromCharCode(parseInt(hex, 16))
+  );
+  text = text.replace(/&#(\d+);/g, (_, num) =>
+    String.fromCharCode(parseInt(num))
+  );
+  text = text.replace(/&\w+;/g, ' ');
+  text = text.replace(/[ \t]+/g, ' ');
+  text = text.replace(/\n[ \t]*/g, '\n');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  text = text.trim();
+
+  const MAX_CHARS = 30000;
+  if (text.length > MAX_CHARS) {
+    text = text.substring(0, MAX_CHARS) + '\n\n[Content truncated...]';
+  }
+
+  return text;
 }
