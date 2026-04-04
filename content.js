@@ -5,7 +5,6 @@
   const INJECTED_ID = 'cs-ext-injected';
   const POPOVER_ID = 'cs-ext-popover';
   const MODAL_ID = 'cs-ext-modal';
-  const FAB_ID = 'cs-ext-fab';
 
   const LANGUAGES = [
     { code: 'th', name: 'ไทย', flag: '🇹🇭' },
@@ -30,7 +29,7 @@
         return;
       }
     } catch {}
-    [INJECTED_ID, POPOVER_ID, MODAL_ID, FAB_ID].forEach((id) => {
+    [INJECTED_ID, POPOVER_ID, MODAL_ID].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.remove();
     });
@@ -920,6 +919,190 @@
       from { opacity: 0; transform: scale(0.96); }
       to   { opacity: 1; transform: scale(1); }
     }
+
+    /* ===== Word Explainer ===== */
+
+    .word-explain-popover {
+      position: fixed;
+      background: #0d1b4b;
+      border: 1.5px solid #1e3a8a;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(59,130,246,0.12);
+      width: 340px;
+      max-height: 420px;
+      display: none;
+      flex-direction: column;
+      z-index: 2147483648;
+      pointer-events: auto;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 13px;
+      color: #e0e8ff;
+      overflow: hidden;
+    }
+
+    .word-explain-popover.visible {
+      display: flex;
+      animation: csDropIn 0.2s ease-out;
+    }
+
+    .word-explain-popover-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, #111d5e 0%, #1a2980 100%);
+      border-bottom: 1px solid #1e3a8a;
+      flex-shrink: 0;
+      gap: 8px;
+    }
+
+    .word-explain-popover-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #60a5fa;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      flex-shrink: 0;
+    }
+
+    .word-explain-popover-term {
+      font-size: 13px;
+      font-weight: 700;
+      color: #93c5fd;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .word-explain-popover-close {
+      width: 22px;
+      height: 22px;
+      border: none;
+      background: rgba(255,255,255,0.08);
+      border-radius: 50%;
+      color: #93c5fd;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s;
+      line-height: 1;
+    }
+
+    .word-explain-popover-close:hover {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    .word-explain-popover-body {
+      flex: 1;
+      overflow: auto;
+      padding: 14px 16px;
+      line-height: 1.75;
+    }
+
+    .word-explain-popover-body::-webkit-scrollbar { width: 4px; }
+    .word-explain-popover-body::-webkit-scrollbar-track { background: transparent; }
+    .word-explain-popover-body::-webkit-scrollbar-thumb { background: #1e3a8a; border-radius: 2px; }
+
+    .word-explain-popover-body h1,
+    .word-explain-popover-body h2,
+    .word-explain-popover-body h3,
+    .word-explain-popover-body h4 {
+      color: #93c5fd;
+      margin: 10px 0 6px;
+      font-weight: 700;
+    }
+
+    .word-explain-popover-body h1 { font-size: 1.15em; border-bottom: 1px solid #1e3a8a; padding-bottom: 4px; }
+    .word-explain-popover-body h2 { font-size: 1.05em; }
+    .word-explain-popover-body h3 { font-size: 1em; }
+    .word-explain-popover-body h4 { font-size: 0.95em; color: #a5b4fc; }
+
+    .word-explain-popover-body p { margin: 6px 0; color: #cbd5e1; }
+    .word-explain-popover-body strong { color: #93c5fd; }
+    .word-explain-popover-body em { color: #a5b4fc; font-style: italic; }
+    .word-explain-popover-body del { color: #6b7280; }
+
+    .word-explain-popover-body ul,
+    .word-explain-popover-body ol { margin: 6px 0; padding-left: 20px; }
+
+    .word-explain-popover-body li { margin: 3px 0; color: #cbd5e1; }
+    .word-explain-popover-body li::marker { color: #3b82f6; }
+
+    .word-explain-popover-body code {
+      background: #1e3a8a;
+      color: #93c5fd;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+      font-size: 0.85em;
+    }
+
+    .word-explain-popover-body pre {
+      background: #060f2e;
+      color: #a5b4fc;
+      padding: 10px 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 8px 0;
+      font-size: 12px;
+    }
+
+    .word-explain-popover-body pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+    }
+
+    .word-explain-popover-body blockquote {
+      border-left: 3px solid #3b82f6;
+      padding: 6px 12px;
+      margin: 8px 0;
+      background: #111d5e;
+      border-radius: 0 6px 6px 0;
+      color: #a5b4fc;
+    }
+
+    .word-explain-popover-body hr {
+      border: none;
+      border-top: 1px solid #1e3a8a;
+      margin: 10px 0;
+    }
+
+    .word-explain-popover-body a {
+      color: #60a5fa;
+      text-decoration: underline;
+    }
+
+    .word-explain-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 24px;
+      color: #60a5fa;
+    }
+
+    .word-explain-spinner {
+      width: 26px;
+      height: 26px;
+      border: 2.5px solid #1e3a8a;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: cs-spin 0.7s linear infinite;
+    }
+
+    .word-explain-loading span {
+      font-size: 12px;
+      color: #60a5fa;
+      font-weight: 500;
+    }
   `;
 
   // ===================== State =====================
@@ -939,11 +1122,16 @@
   let modalHeader = null;
   let modalBody = null;
   let dropdownClickHandler = null;
+  let wordExplainPopover = null;
+  let lastContextMenuPos = { x: 100, y: 100 };
   const INIT_W = 560;
   const INIT_H = 500;
 
   // ===================== Selection Popover =====================
+  // NOTE: This feature (highlight text on page → icon to summarize) is disabled.
+  // The code is preserved below in case it needs to be re-enabled in the future.
 
+  /*
   function setupPopover() {
     const host = document.createElement('div');
     host.id = POPOVER_ID;
@@ -1058,6 +1246,7 @@
       lastSelectedText = '';
     });
   }
+  */
 
   // ===================== Modal: Lazy Creation =====================
 
@@ -1100,6 +1289,32 @@
 
     modalShadow.appendChild(modal);
     document.body.appendChild(modalRoot);
+
+    // ===================== Word Explainer Elements =====================
+
+    wordExplainPopover = document.createElement('div');
+    wordExplainPopover.className = 'word-explain-popover';
+    wordExplainPopover.innerHTML = `
+      <div class="word-explain-popover-header">
+        <span class="word-explain-popover-title">🔍 Explain</span>
+        <span class="word-explain-popover-term"></span>
+        <button class="word-explain-popover-close">✕</button>
+      </div>
+      <div class="word-explain-popover-body"></div>
+    `;
+    modalShadow.appendChild(wordExplainPopover);
+
+    wordExplainPopover.querySelector('.word-explain-popover-close').addEventListener('click', () => {
+      wordExplainPopover.classList.remove('visible');
+    });
+
+    modalShadow.addEventListener('mousedown', (e) => {
+      if (!e.composedPath().includes(wordExplainPopover)) {
+        wordExplainPopover.classList.remove('visible');
+      }
+    });
+
+    // ===================== End Word Explainer Elements =====================
 
     modalHeader.querySelector('.close-btn').addEventListener('click', () => {
       modal.style.display = 'none';
@@ -1367,6 +1582,9 @@
         } else {
           textarea.style.display = 'none';
           urlSection.style.display = '';
+          if (!urlInput.value && !urlInput.disabled) {
+            urlInput.value = window.location.href;
+          }
         }
       });
     });
@@ -1807,134 +2025,11 @@
     });
   }
 
-  // ===================== Floating Action Button =====================
+  // ===================== Context Menu Position Tracking =====================
 
-  function setupFloatingButton() {
-    const host = document.createElement('div');
-    host.id = FAB_ID;
-    host.style.cssText =
-      'all:initial; position:fixed; top:0; left:0; width:0; height:0; z-index:2147483645; pointer-events:none;';
-
-    const fabShadow = host.attachShadow({ mode: 'open' });
-
-    const style = document.createElement('style');
-    style.textContent = `
-      .cs-fab {
-        position: fixed;
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #66BB6A 0%, #43A047 100%);
-        border: 2px solid rgba(255,255,255,0.25);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.04);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        pointer-events: auto;
-        transition: box-shadow 0.25s, opacity 0.25s, border-color 0.25s;
-        opacity: 0.55;
-        padding: 0;
-        outline: none;
-        user-select: none;
-        -webkit-user-select: none;
-      }
-      .cs-fab:hover {
-        opacity: 1;
-        box-shadow: 0 6px 24px rgba(76,175,80,0.45), 0 0 0 1px rgba(0,0,0,0.04);
-        border-color: rgba(255,255,255,0.5);
-      }
-      .cs-fab.dragging {
-        opacity: 0.9;
-        cursor: grabbing;
-        transition: none;
-        box-shadow: 0 8px 28px rgba(0,0,0,0.25);
-      }
-      .cs-fab img {
-        width: 22px;
-        height: 22px;
-        pointer-events: none;
-        border-radius: 3px;
-        filter: brightness(0) invert(1);
-      }
-      @keyframes cs-fabIn {
-        from { opacity: 0; transform: scale(0.4); }
-        to   { opacity: 0.55; transform: scale(1); }
-      }
-      .cs-fab.enter {
-        animation: cs-fabIn 0.3s ease-out;
-      }
-    `;
-    fabShadow.appendChild(style);
-
-    const fab = document.createElement('button');
-    fab.className = 'cs-fab enter';
-    fab.title = 'Content Summarizer';
-    fab.style.right = '16px';
-    fab.style.top = (window.innerHeight / 2 - 22) + 'px';
-
-    const img = document.createElement('img');
-    try {
-      img.src = chrome.runtime.getURL('icons/icon48.png');
-    } catch {}
-    img.alt = 'Summarize';
-    fab.appendChild(img);
-    fabShadow.appendChild(fab);
-
-    document.body.appendChild(host);
-
-    let isDragging = false;
-    let hasDragged = false;
-    let dragStartX, dragStartY, fabStartLeft, fabStartTop;
-
-    fab.addEventListener('mousedown', (e) => {
-      if (e.button !== 0) return;
-      isDragging = true;
-      hasDragged = false;
-
-      const rect = fab.getBoundingClientRect();
-      dragStartX = e.clientX;
-      dragStartY = e.clientY;
-      fabStartLeft = rect.left;
-      fabStartTop = rect.top;
-
-      fab.classList.add('dragging');
-      e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-
-      const dx = e.clientX - dragStartX;
-      const dy = e.clientY - dragStartY;
-
-      if (!hasDragged && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
-        hasDragged = true;
-        fab.style.right = 'auto';
-        fab.style.left = fabStartLeft + 'px';
-      }
-
-      if (hasDragged) {
-        const newLeft = Math.max(0, Math.min(fabStartLeft + dx, window.innerWidth - 44));
-        const newTop = Math.max(0, Math.min(fabStartTop + dy, window.innerHeight - 44));
-        fab.style.left = newLeft + 'px';
-        fab.style.top = newTop + 'px';
-      }
-
-      e.preventDefault();
-    });
-
-    document.addEventListener('mouseup', () => {
-      if (!isDragging) return;
-      isDragging = false;
-      fab.classList.remove('dragging');
-
-      if (!hasDragged) {
-        if (!isContextValid()) return;
-        toggleModal();
-      }
-    });
-  }
+  document.addEventListener('contextmenu', (e) => {
+    lastContextMenuPos = { x: e.clientX, y: e.clientY };
+  });
 
   // ===================== Message Listener =====================
 
@@ -1943,14 +2038,78 @@
       if (request.type === 'toggle-modal') {
         toggleModal();
         sendResponse({ ok: true });
+        return;
+      }
+
+      if (request.type === 'explain-selection') {
+        const term = (request.term || '').trim();
+        if (!term || !rawResponse || !apiKey) {
+          sendResponse({ ok: false });
+          return;
+        }
+
+        ensureModal();
+        if (!isModalVisible()) showModal();
+
+        const popW = 340;
+        const popMaxH = 420;
+        let pLeft = lastContextMenuPos.x + 12;
+        let pTop = lastContextMenuPos.y;
+
+        if (pLeft + popW > window.innerWidth - 10) pLeft = Math.max(10, lastContextMenuPos.x - popW - 4);
+        if (pLeft < 10) pLeft = 10;
+        if (pTop < 10) pTop = 10;
+        if (pTop + popMaxH > window.innerHeight - 10) pTop = Math.max(10, window.innerHeight - popMaxH - 10);
+
+        const termEl = wordExplainPopover.querySelector('.word-explain-popover-term');
+        const bodyEl = wordExplainPopover.querySelector('.word-explain-popover-body');
+
+        wordExplainPopover.style.left = pLeft + 'px';
+        wordExplainPopover.style.top = pTop + 'px';
+        termEl.textContent = `"${term}"`;
+        bodyEl.innerHTML = `
+          <div class="word-explain-loading">
+            <div class="word-explain-spinner"></div>
+            <span>Explaining...</span>
+          </div>
+        `;
+        wordExplainPopover.classList.add('visible');
+
+        (async () => {
+          try {
+            if (!isContextValid()) throw new Error('Extension was reloaded. Please refresh the page.');
+            const result = await new Promise((resolve, reject) => {
+              try {
+                chrome.runtime.sendMessage(
+                  { type: 'explain-word', apiKey, term, context: rawResponse },
+                  (resp) => {
+                    if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
+                    if (!resp) { reject(new Error('No response from background script.')); return; }
+                    if (resp.success) resolve(resp.data);
+                    else reject(new Error(resp.error));
+                  }
+                );
+              } catch (err) { reject(err); }
+            });
+            if (wordExplainPopover.classList.contains('visible')) {
+              bodyEl.innerHTML = parseMarkdown(result);
+            }
+          } catch (err) {
+            if (wordExplainPopover.classList.contains('visible')) {
+              bodyEl.innerHTML = `<div class="error-text">Error: ${escapeHtml(err.message)}</div>`;
+            }
+          }
+        })();
+
+        sendResponse({ ok: true });
+        return;
       }
     });
   } catch {}
 
   // ===================== Init =====================
 
-  setupPopover();
-  setupFloatingButton();
+  // setupPopover(); // Disabled: highlight-on-page → icon to summarize feature
 
   try {
     chrome.storage.local.get([STORAGE_KEY], (result) => {

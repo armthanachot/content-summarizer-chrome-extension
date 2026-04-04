@@ -1,3 +1,26 @@
+// ===================== Context Menu =====================
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'cs-explain-word',
+      title: '🔍 Explain in Summary Context',
+      contexts: ['selection'],
+    });
+  });
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'cs-explain-word' && info.selectionText) {
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'explain-selection',
+      term: info.selectionText.trim(),
+    }).catch(() => {});
+  }
+});
+
+// ===================== Action =====================
+
 chrome.action.onClicked.addListener(async (tab) => {
   try {
     await chrome.scripting.executeScript({
@@ -30,6 +53,13 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
   if (request.type === 'summarize-url') {
     fetchAndSummarize(request.apiKey, request.url, request.maxWords, request.targetLang)
+      .then((result) => sendResponse({ success: true, data: result }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  if (request.type === 'explain-word') {
+    explainWord(request.apiKey, request.term, request.context)
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
@@ -166,6 +196,48 @@ async function fetchAndSummarize(apiKey, url, maxWords, targetLang) {
   }
 
   return callOpenAI(apiKey, text, maxWords, targetLang);
+}
+
+async function explainWord(apiKey, term, context) {
+  const systemPrompt = `You are a knowledgeable assistant helping a reader understand a specific word or phrase from a summary they are reading.
+
+Your task is to explain the highlighted term clearly in the context of the provided summary. Your explanation must:
+- Clarify what the term means specifically within this context
+- Explain its significance or role in relation to the main topic
+- Use simple, clear language that a non-expert can understand
+- Be concise but thorough (2–4 paragraphs or bullet points at most)
+- Use markdown formatting for clarity (bold key concepts, use bullets if listing things)
+- Respond in the EXACT SAME LANGUAGE as the provided summary — do NOT switch languages`;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: `Here is the summary context:\n\n${context}\n\n---\n\nPlease explain what **"${term}"** means in the context above.`,
+        },
+      ],
+      temperature: 0.4,
+      max_tokens: 600,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(
+      errorBody.error?.message || `API request failed with status ${response.status}`
+    );
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
 }
 
 function extractTextFromHtml(html) {
