@@ -924,20 +924,19 @@
 
     .word-explain-popover {
       position: fixed;
-      background: #0d1b4b;
+      background: #ffffff;
       border: 1.5px solid #1e3a8a;
       border-radius: 12px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(59,130,246,0.12);
+      box-shadow: 0 20px 60px rgba(26,35,126,0.22), 0 0 0 1px rgba(30,58,138,0.12);
       width: 340px;
-      max-height: 420px;
+      height: 420px;
       display: none;
       flex-direction: column;
       z-index: 2147483648;
       pointer-events: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       font-size: 13px;
-      color: #e0e8ff;
-      overflow: hidden;
+      color: #0f172a;
     }
 
     .word-explain-popover.visible {
@@ -950,16 +949,20 @@
       align-items: center;
       justify-content: space-between;
       padding: 10px 14px;
-      background: linear-gradient(135deg, #111d5e 0%, #1a2980 100%);
+      background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
       border-bottom: 1px solid #1e3a8a;
+      border-radius: 11px 11px 0 0;
       flex-shrink: 0;
       gap: 8px;
+      cursor: move;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     .word-explain-popover-title {
       font-size: 11px;
       font-weight: 600;
-      color: #60a5fa;
+      color: rgba(255,255,255,0.65);
       text-transform: uppercase;
       letter-spacing: 0.6px;
       flex-shrink: 0;
@@ -968,7 +971,7 @@
     .word-explain-popover-term {
       font-size: 13px;
       font-weight: 700;
-      color: #93c5fd;
+      color: #ffffff;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -980,9 +983,9 @@
       width: 22px;
       height: 22px;
       border: none;
-      background: rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.15);
       border-radius: 50%;
-      color: #93c5fd;
+      color: #ffffff;
       font-size: 11px;
       cursor: pointer;
       display: flex;
@@ -994,8 +997,7 @@
     }
 
     .word-explain-popover-close:hover {
-      background: rgba(255,255,255,0.2);
-      color: #fff;
+      background: rgba(255,255,255,0.3);
     }
 
     .word-explain-popover-body {
@@ -1003,49 +1005,54 @@
       overflow: auto;
       padding: 14px 16px;
       line-height: 1.75;
+      background: #ffffff;
+      border-radius: 0 0 11px 11px;
+      min-height: 0;
     }
 
-    .word-explain-popover-body::-webkit-scrollbar { width: 4px; }
+    .word-explain-popover-body::-webkit-scrollbar { width: 5px; }
     .word-explain-popover-body::-webkit-scrollbar-track { background: transparent; }
-    .word-explain-popover-body::-webkit-scrollbar-thumb { background: #1e3a8a; border-radius: 2px; }
+    .word-explain-popover-body::-webkit-scrollbar-thumb { background: #bfdbfe; border-radius: 3px; }
+    .word-explain-popover-body::-webkit-scrollbar-thumb:hover { background: #93c5fd; }
 
     .word-explain-popover-body h1,
     .word-explain-popover-body h2,
     .word-explain-popover-body h3,
     .word-explain-popover-body h4 {
-      color: #93c5fd;
+      color: #1e3a8a;
       margin: 10px 0 6px;
       font-weight: 700;
     }
 
-    .word-explain-popover-body h1 { font-size: 1.15em; border-bottom: 1px solid #1e3a8a; padding-bottom: 4px; }
+    .word-explain-popover-body h1 { font-size: 1.15em; border-bottom: 1.5px solid #bfdbfe; padding-bottom: 4px; }
     .word-explain-popover-body h2 { font-size: 1.05em; }
     .word-explain-popover-body h3 { font-size: 1em; }
-    .word-explain-popover-body h4 { font-size: 0.95em; color: #a5b4fc; }
+    .word-explain-popover-body h4 { font-size: 0.95em; color: #3730a3; }
 
-    .word-explain-popover-body p { margin: 6px 0; color: #cbd5e1; }
-    .word-explain-popover-body strong { color: #93c5fd; }
-    .word-explain-popover-body em { color: #a5b4fc; font-style: italic; }
-    .word-explain-popover-body del { color: #6b7280; }
+    .word-explain-popover-body p { margin: 6px 0; color: #1e293b; }
+    .word-explain-popover-body strong { color: #1e3a8a; }
+    .word-explain-popover-body em { color: #3730a3; font-style: italic; }
+    .word-explain-popover-body del { color: #94a3b8; }
 
     .word-explain-popover-body ul,
     .word-explain-popover-body ol { margin: 6px 0; padding-left: 20px; }
 
-    .word-explain-popover-body li { margin: 3px 0; color: #cbd5e1; }
-    .word-explain-popover-body li::marker { color: #3b82f6; }
+    .word-explain-popover-body li { margin: 3px 0; color: #1e293b; }
+    .word-explain-popover-body li::marker { color: #2563eb; }
 
     .word-explain-popover-body code {
-      background: #1e3a8a;
-      color: #93c5fd;
+      background: #eff6ff;
+      color: #1e3a8a;
       padding: 1px 5px;
       border-radius: 3px;
       font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
       font-size: 0.85em;
+      border: 1px solid #bfdbfe;
     }
 
     .word-explain-popover-body pre {
-      background: #060f2e;
-      color: #a5b4fc;
+      background: #1e3a8a;
+      color: #e0e7ff;
       padding: 10px 12px;
       border-radius: 6px;
       overflow-x: auto;
@@ -1057,25 +1064,26 @@
       background: none;
       color: inherit;
       padding: 0;
+      border: none;
     }
 
     .word-explain-popover-body blockquote {
       border-left: 3px solid #3b82f6;
       padding: 6px 12px;
       margin: 8px 0;
-      background: #111d5e;
+      background: #eff6ff;
       border-radius: 0 6px 6px 0;
-      color: #a5b4fc;
+      color: #1e3a8a;
     }
 
     .word-explain-popover-body hr {
       border: none;
-      border-top: 1px solid #1e3a8a;
+      border-top: 1.5px solid #bfdbfe;
       margin: 10px 0;
     }
 
     .word-explain-popover-body a {
-      color: #60a5fa;
+      color: #2563eb;
       text-decoration: underline;
     }
 
@@ -1086,21 +1094,21 @@
       justify-content: center;
       gap: 10px;
       padding: 24px;
-      color: #60a5fa;
+      color: #1e3a8a;
     }
 
     .word-explain-spinner {
       width: 26px;
       height: 26px;
-      border: 2.5px solid #1e3a8a;
-      border-top-color: #3b82f6;
+      border: 2.5px solid #bfdbfe;
+      border-top-color: #1e3a8a;
       border-radius: 50%;
       animation: cs-spin 0.7s linear infinite;
     }
 
     .word-explain-loading span {
       font-size: 12px;
-      color: #60a5fa;
+      color: #1e3a8a;
       font-weight: 500;
     }
   `;
@@ -1307,6 +1315,9 @@
     wordExplainPopover.querySelector('.word-explain-popover-close').addEventListener('click', () => {
       wordExplainPopover.classList.remove('visible');
     });
+
+    initExplainDrag(wordExplainPopover, wordExplainPopover.querySelector('.word-explain-popover-header'));
+    initExplainResize(wordExplainPopover);
 
     modalShadow.addEventListener('mousedown', (e) => {
       if (!e.composedPath().includes(wordExplainPopover)) {
@@ -2031,6 +2042,99 @@
     lastContextMenuPos = { x: e.clientX, y: e.clientY };
   });
 
+  // ===================== Explain Popover Drag =====================
+
+  function initExplainDrag(popover, header) {
+    let dragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    header.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.word-explain-popover-close')) return;
+      dragging = true;
+      const rect = popover.getBoundingClientRect();
+      popover.style.left = rect.left + 'px';
+      popover.style.top = rect.top + 'px';
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      popover.style.left = Math.max(0, e.clientX - offsetX) + 'px';
+      popover.style.top = Math.max(0, e.clientY - offsetY) + 'px';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mouseup', () => {
+      dragging = false;
+    });
+  }
+
+  // ===================== Explain Popover Resize =====================
+
+  function initExplainResize(popover) {
+    const dirs = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
+    const MIN_W = 260;
+    const MIN_H = 180;
+    let resizeDir = null;
+    let startX, startY, startW, startH, startLeft, startTop;
+
+    dirs.forEach((dir) => {
+      const handle = document.createElement('div');
+      handle.className = `resize-handle resize-${dir}`;
+      popover.appendChild(handle);
+
+      handle.addEventListener('mousedown', (e) => {
+        resizeDir = dir;
+        const rect = popover.getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        startW = rect.width;
+        startH = rect.height;
+        startLeft = rect.left;
+        startTop = rect.top;
+        popover.style.left = rect.left + 'px';
+        popover.style.top = rect.top + 'px';
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!resizeDir) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      let newW = startW;
+      let newH = startH;
+      let newLeft = startLeft;
+      let newTop = startTop;
+
+      if (resizeDir.includes('e')) newW = Math.max(MIN_W, startW + dx);
+      if (resizeDir.includes('w')) {
+        newW = Math.max(MIN_W, startW - dx);
+        newLeft = startLeft + (startW - newW);
+      }
+      if (resizeDir.includes('s')) newH = Math.max(MIN_H, startH + dy);
+      if (resizeDir.includes('n')) {
+        newH = Math.max(MIN_H, startH - dy);
+        newTop = startTop + (startH - newH);
+      }
+
+      popover.style.width = newW + 'px';
+      popover.style.height = newH + 'px';
+      popover.style.left = newLeft + 'px';
+      popover.style.top = newTop + 'px';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mouseup', () => {
+      resizeDir = null;
+    });
+  }
+
   // ===================== Message Listener =====================
 
   try {
@@ -2066,6 +2170,8 @@
 
         wordExplainPopover.style.left = pLeft + 'px';
         wordExplainPopover.style.top = pTop + 'px';
+        wordExplainPopover.style.width = '340px';
+        wordExplainPopover.style.height = '420px';
         termEl.textContent = `"${term}"`;
         bodyEl.innerHTML = `
           <div class="word-explain-loading">
