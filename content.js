@@ -1,7 +1,18 @@
 (function () {
   'use strict';
 
-  const STORAGE_KEY = 'CONTENT_SUMMARIZER_OPENAI_TOKEN';
+  const DEFAULT_PROVIDER = 'openai';
+  const PROVIDER_OPTIONS = [
+    { value: 'openai', label: 'OpenAI' },
+    { value: 'gemini', label: 'Gemini' },
+  ];
+  const STORAGE_KEYS = {
+    provider: 'CONTENT_SUMMARIZER_AI_PROVIDER',
+    tokens: {
+      openai: 'CONTENT_SUMMARIZER_OPENAI_TOKEN',
+      gemini: 'CONTENT_SUMMARIZER_GEMINI_TOKEN',
+    },
+  };
   const INJECTED_ID = 'cs-ext-injected';
   const POPOVER_ID = 'cs-ext-popover';
   const MODAL_ID = 'cs-ext-modal';
@@ -435,7 +446,8 @@
     .toggle-option:disabled,
     .lang-select-btn:disabled,
     .translate-btn:disabled,
-    .copy-btn:disabled {
+    .copy-btn:disabled,
+    .refresh-btn:disabled {
       opacity: 0.55;
       cursor: not-allowed;
     }
@@ -611,6 +623,36 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .response-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex-shrink: 1;
+    }
+
+    .refresh-btn {
+      padding: 4px 8px;
+      border: 1.5px solid #C8E6C9;
+      border-radius: 6px;
+      background: #fff;
+      color: #43A047;
+      font-size: 12px;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .refresh-btn:hover {
+      background: #E8F5E9;
+      border-color: #81C784;
     }
 
     .copy-btn {
@@ -1115,7 +1157,11 @@
 
   // ===================== State =====================
 
-  let apiKey = '';
+  let currentProvider = DEFAULT_PROVIDER;
+  let apiTokens = {
+    openai: '',
+    gemini: '',
+  };
   let rawResponse = '';
   let originalResponse = '';
   let isLoading = false;
@@ -1134,6 +1180,28 @@
   let lastContextMenuPos = { x: 100, y: 100 };
   const INIT_W = 560;
   const INIT_H = 500;
+
+  function normalizeProvider(provider) {
+    return PROVIDER_OPTIONS.some((option) => option.value === provider)
+      ? provider
+      : DEFAULT_PROVIDER;
+  }
+
+  function getActiveApiKey(provider = currentProvider) {
+    const normalized = normalizeProvider(provider);
+    return (apiTokens[normalized] || '').trim();
+  }
+
+  function setTokenForProvider(provider, tokenValue) {
+    const normalized = normalizeProvider(provider);
+    apiTokens[normalized] = (tokenValue || '').trim();
+  }
+
+  function getProviderLabel(provider = currentProvider) {
+    const normalized = normalizeProvider(provider);
+    const option = PROVIDER_OPTIONS.find((item) => item.value === normalized);
+    return option ? option.label : 'OpenAI';
+  }
 
   // ===================== Selection Popover =====================
   // NOTE: This feature (highlight text on page → icon to summarize) is disabled.
@@ -1369,7 +1437,7 @@
     ensureModal();
     showModal();
 
-    if (apiKey) {
+    if (getActiveApiKey()) {
       showMainView();
       return;
     }
@@ -1377,14 +1445,20 @@
     showKeyView();
 
     try {
-      chrome.storage.local.get([STORAGE_KEY], (result) => {
-        if (!isContextValid()) return;
-        const storedKey = result[STORAGE_KEY] || '';
-        if (storedKey) {
-          apiKey = storedKey;
-          showMainView();
+      chrome.storage.local.get(
+        [
+          STORAGE_KEYS.provider,
+          STORAGE_KEYS.tokens.openai,
+          STORAGE_KEYS.tokens.gemini,
+        ],
+        (result) => {
+          if (!isContextValid()) return;
+          currentProvider = normalizeProvider(result[STORAGE_KEYS.provider]);
+          setTokenForProvider('openai', result[STORAGE_KEYS.tokens.openai] || '');
+          setTokenForProvider('gemini', result[STORAGE_KEYS.tokens.gemini] || '');
+          if (getActiveApiKey()) showMainView();
         }
-      });
+      );
     } catch {}
   }
 
@@ -1398,35 +1472,63 @@
 
   // ===================== Views =====================
 
+  function buildProviderOptions(selectedProvider) {
+    return PROVIDER_OPTIONS.map((providerOption) => {
+      const isSelected = selectedProvider === providerOption.value ? 'selected' : '';
+      return `<option value="${providerOption.value}" ${isSelected}>${providerOption.label}</option>`;
+    }).join('');
+  }
+
   function showKeyView(errorMsg) {
     modalBody.innerHTML = '';
     const view = document.createElement('div');
     view.className = 'key-view';
     view.innerHTML = `
       <div class="icon">🔑</div>
-      <h2>Enter your OpenAI API Key</h2>
-      <p>Your key is stored locally in your browser and never sent anywhere except OpenAI.</p>
-      <input type="password" placeholder="sk-..." class="key-input" />
+      <h2>Set AI Provider API Key</h2>
+      <p>Your key is stored locally in your browser and only used for your selected provider.</p>
+      <select class="key-input provider-select">${buildProviderOptions(currentProvider)}</select>
+      <input type="password" placeholder="Enter API key..." class="key-input" />
       <span class="error-msg">${errorMsg || ''}</span>
       <button class="save-btn">Save & Continue</button>
     `;
     modalBody.appendChild(view);
 
-    const input = view.querySelector('.key-input');
+    const providerSelect = view.querySelector('.provider-select');
+    const input = view.querySelector('input.key-input');
     const errSpan = view.querySelector('.error-msg');
     const saveBtn = view.querySelector('.save-btn');
 
-    if (apiKey) input.value = apiKey;
+    function syncKeyInputByProvider() {
+      const selectedProvider = normalizeProvider(providerSelect.value);
+      providerSelect.value = selectedProvider;
+      input.value = getActiveApiKey(selectedProvider);
+      input.placeholder = selectedProvider === 'gemini' ? 'AIza...' : 'sk-...';
+    }
+
+    syncKeyInputByProvider();
+
+    providerSelect.addEventListener('change', () => {
+      currentProvider = normalizeProvider(providerSelect.value);
+      syncKeyInputByProvider();
+    });
 
     saveBtn.addEventListener('click', () => {
+      const selectedProvider = normalizeProvider(providerSelect.value);
       const val = input.value.trim();
       if (!val) {
-        errSpan.textContent = 'Please enter a valid API key.';
+        errSpan.textContent = `Please enter a valid ${getProviderLabel(selectedProvider)} API key.`;
         return;
       }
-      apiKey = val;
+
+      currentProvider = selectedProvider;
+      setTokenForProvider(selectedProvider, val);
       try {
-        chrome.storage.local.set({ [STORAGE_KEY]: val });
+        chrome.storage.local.set({
+          [STORAGE_KEYS.provider]: currentProvider,
+          [STORAGE_KEYS.tokens.openai]: apiTokens.openai,
+          [STORAGE_KEYS.tokens.gemini]: apiTokens.gemini,
+        });
       } catch {}
       showMainView();
     });
@@ -1446,6 +1548,7 @@
 
     modalBody.innerHTML = '';
 
+    const activeProviderLabel = getProviderLabel(currentProvider);
     const inputPanel = document.createElement('div');
     inputPanel.className = 'input-panel';
     inputPanel.innerHTML = `
@@ -1462,6 +1565,10 @@
           <span class="url-display-text"></span>
           <button class="url-open-btn">Open ↗</button>
         </div>
+      </div>
+      <div class="option-row">
+        <label>Provider:</label>
+        <span class="hint">${activeProviderLabel}</span>
       </div>
       <div class="option-row">
         <label>Response length:</label>
@@ -1491,7 +1598,10 @@
     responsePanel.style.display = 'none';
     responsePanel.innerHTML = `
       <div class="response-header">
-        <span class="response-title">Summary</span>
+        <div class="response-title-row">
+          <span class="response-title">Summary</span>
+          <button class="refresh-btn" title="Re-summarize">↻ Refresh</button>
+        </div>
         <div class="response-actions">
           <div class="translate-wrapper">
             <button class="translate-btn" title="Translate"></button>
@@ -1516,6 +1626,7 @@
     const urlOpenBtn = inputPanel.querySelector('.url-open-btn');
     const toggleBtns = inputPanel.querySelectorAll('.toggle-option');
     const copyBtn = responsePanel.querySelector('.copy-btn');
+    const refreshBtn = responsePanel.querySelector('.refresh-btn');
     const responseContent = responsePanel.querySelector('.response-content');
     const translateBtn = responsePanel.querySelector('.translate-btn');
     const translateWrapper = responsePanel.querySelector('.translate-wrapper');
@@ -1614,7 +1725,7 @@
       responseContent.innerHTML = parseMarkdown(rawResponse);
     }
 
-    summarizeBtn.addEventListener('click', async () => {
+    async function runSummarize() {
       let messagePayload;
 
       if (inputMode === 'text') {
@@ -1624,7 +1735,13 @@
           setTimeout(() => (textarea.style.borderColor = ''), 1500);
           return;
         }
-        messagePayload = { type: 'summarize', apiKey, content };
+        const activeApiKey = getActiveApiKey();
+        messagePayload = {
+          type: 'summarize',
+          provider: currentProvider,
+          apiKey: activeApiKey,
+          content,
+        };
       } else {
         const url = urlInput.value.trim();
         if (!url) {
@@ -1642,7 +1759,13 @@
         urlInput.disabled = true;
         urlDisplayText.textContent = url;
         urlDisplay.style.display = '';
-        messagePayload = { type: 'summarize-url', apiKey, url };
+        const activeApiKey = getActiveApiKey();
+        messagePayload = {
+          type: 'summarize-url',
+          provider: currentProvider,
+          apiKey: activeApiKey,
+          url,
+        };
       }
 
       messagePayload.maxWords = parseInt(lengthInput.value, 10) || 0;
@@ -1659,8 +1782,8 @@
 
       expandWithResponse(divider, responsePanel);
       const loadingMsg = inputMode === 'url'
-        ? 'Fetching & summarizing URL...'
-        : 'Summarizing with GPT-4o mini...';
+        ? `Fetching & summarizing URL with ${getProviderLabel()}...`
+        : `Summarizing with ${getProviderLabel()}...`;
       responseContent.innerHTML = `
         <div class="loading-state">
           <div class="spinner"></div>
@@ -1707,7 +1830,10 @@
           urlInput.disabled = true;
         }
       }
-    });
+    }
+
+    summarizeBtn.addEventListener('click', runSummarize);
+    refreshBtn.addEventListener('click', runSummarize);
 
     clearBtn.addEventListener('click', () => {
       if (inputMode === 'text') {
@@ -1754,6 +1880,7 @@
       langSelectBtn.disabled = locked;
       translateBtn.disabled = locked;
       copyBtn.disabled = locked;
+      refreshBtn.disabled = locked;
       textarea.disabled = locked;
       lengthInput.disabled = locked;
       toggleBtns.forEach(b => b.disabled = locked);
@@ -1806,7 +1933,8 @@
                 chrome.runtime.sendMessage(
                   {
                     type: 'translate',
-                    apiKey,
+                    provider: currentProvider,
+                    apiKey: getActiveApiKey(),
                     content: originalResponse,
                     targetLang: lang.name,
                   },
@@ -2145,9 +2273,16 @@
         return;
       }
 
+      if (request.type === 'summarize-selection') {
+        const term = (request.term || '').trim();
+        openModal(term);
+        sendResponse({ ok: true });
+        return;
+      }
+
       if (request.type === 'explain-selection') {
         const term = (request.term || '').trim();
-        if (!term || !rawResponse || !apiKey) {
+        if (!term || !rawResponse || !getActiveApiKey()) {
           sendResponse({ ok: false });
           return;
         }
@@ -2187,7 +2322,13 @@
             const result = await new Promise((resolve, reject) => {
               try {
                 chrome.runtime.sendMessage(
-                  { type: 'explain-word', apiKey, term, context: rawResponse },
+                  {
+                    type: 'explain-word',
+                    provider: currentProvider,
+                    apiKey: getActiveApiKey(),
+                    term,
+                    context: rawResponse,
+                  },
                   (resp) => {
                     if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
                     if (!resp) { reject(new Error('No response from background script.')); return; }
@@ -2218,9 +2359,18 @@
   // setupPopover(); // Disabled: highlight-on-page → icon to summarize feature
 
   try {
-    chrome.storage.local.get([STORAGE_KEY], (result) => {
-      if (!isContextValid()) return;
-      apiKey = result[STORAGE_KEY] || '';
-    });
+    chrome.storage.local.get(
+      [
+        STORAGE_KEYS.provider,
+        STORAGE_KEYS.tokens.openai,
+        STORAGE_KEYS.tokens.gemini,
+      ],
+      (result) => {
+        if (!isContextValid()) return;
+        currentProvider = normalizeProvider(result[STORAGE_KEYS.provider]);
+        setTokenForProvider('openai', result[STORAGE_KEYS.tokens.openai] || '');
+        setTokenForProvider('gemini', result[STORAGE_KEYS.tokens.gemini] || '');
+      }
+    );
   } catch {}
 })();

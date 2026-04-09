@@ -1,7 +1,95 @@
+// ===================== AI Provider Setup =====================
+
+const DEFAULT_PROVIDER = 'openai';
+
+const PROVIDER_CONFIGS = {
+  openai: {
+    label: 'OpenAI',
+    models: {
+      default: 'gpt-4o-mini',
+      supported: ['gpt-4o-mini'],
+    },
+    taskDefaults: {
+      summarize: 'gpt-4o-mini',
+      translate: 'gpt-4o-mini',
+      explain: 'gpt-4o-mini',
+    },
+  },
+  gemini: {
+    label: 'Gemini',
+    models: {
+      default: 'gemini-3-flash-preview',
+      supported: ['gemini-3-flash-preview'],
+    },
+    taskDefaults: {
+      summarize: 'gemini-3-flash-preview',
+      translate: 'gemini-3-flash-preview',
+      explain: 'gemini-3-flash-preview',
+    },
+  },
+};
+
+function normalizeProvider(provider) {
+  return PROVIDER_CONFIGS[provider] ? provider : DEFAULT_PROVIDER;
+}
+
+function getProviderLabel(provider) {
+  const normalized = normalizeProvider(provider);
+  return PROVIDER_CONFIGS[normalized].label;
+}
+
+function getProviderModel(provider, taskType) {
+  const normalized = normalizeProvider(provider);
+  const config = PROVIDER_CONFIGS[normalized];
+  return config.taskDefaults[taskType] || config.models.default;
+}
+
+function resolveModelSelection(provider, taskType, requestedModel) {
+  const normalized = normalizeProvider(provider);
+  const config = PROVIDER_CONFIGS[normalized];
+  const safeRequestedModel =
+    typeof requestedModel === 'string' ? requestedModel.trim() : '';
+
+  if (safeRequestedModel && config.models.supported.includes(safeRequestedModel)) {
+    return safeRequestedModel;
+  }
+
+  return getProviderModel(normalized, taskType);
+}
+
+async function initializeAI(provider, apiKey, modelPreference) {
+  const normalized = normalizeProvider(provider);
+  if (!apiKey || !apiKey.trim()) {
+    throw new Error(`Missing API key for ${getProviderLabel(normalized)}.`);
+  }
+  return {
+    provider: normalized,
+    apiKey: apiKey.trim(),
+    modelPreference,
+  };
+}
+
+async function generateAIContent(client, taskType, systemPrompt, userPrompt) {
+  const model = resolveModelSelection(
+    client.provider,
+    taskType,
+    client.modelPreference
+  );
+  if (client.provider === 'gemini') {
+    return callGemini(client.apiKey, model, systemPrompt, userPrompt);
+  }
+  return callOpenAI(client.apiKey, model, systemPrompt, userPrompt);
+}
+
 // ===================== Context Menu =====================
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'cs-summarize-selection',
+      title: '🔄 Summarize',
+      contexts: ['selection'],
+    });
     chrome.contextMenus.create({
       id: 'cs-explain-word',
       title: '🔍 Explain in Summary Context',
@@ -11,10 +99,22 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'cs-explain-word' && info.selectionText) {
+  if (!tab?.id || !info.selectionText) return;
+  const selectionText = info.selectionText.trim();
+  if (!selectionText) return;
+
+  if (info.menuItemId === 'cs-summarize-selection') {
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'summarize-selection',
+      term: selectionText,
+    }).catch(() => {});
+    return;
+  }
+
+  if (info.menuItemId === 'cs-explain-word') {
     chrome.tabs.sendMessage(tab.id, {
       type: 'explain-selection',
-      term: info.selectionText.trim(),
+      term: selectionText,
     }).catch(() => {});
   }
 });
@@ -38,35 +138,68 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.type === 'summarize') {
-    callOpenAI(request.apiKey, request.content, request.maxWords, request.targetLang)
+    summarizeContent(
+      request.provider,
+      request.apiKey,
+      request.content,
+      request.maxWords,
+      request.targetLang,
+      request.model
+    )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
 
   if (request.type === 'translate') {
-    translateContent(request.apiKey, request.content, request.targetLang)
+    translateContent(
+      request.provider,
+      request.apiKey,
+      request.content,
+      request.targetLang,
+      request.model
+    )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
 
   if (request.type === 'summarize-url') {
-    fetchAndSummarize(request.apiKey, request.url, request.maxWords, request.targetLang)
+    fetchAndSummarize(
+      request.provider,
+      request.apiKey,
+      request.url,
+      request.maxWords,
+      request.targetLang,
+      request.model
+    )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
 
   if (request.type === 'explain-word') {
-    explainWord(request.apiKey, request.term, request.context)
+    explainWord(
+      request.provider,
+      request.apiKey,
+      request.term,
+      request.context,
+      request.model
+    )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
 });
 
-async function callOpenAI(apiKey, content, maxWords, targetLang) {
+async function summarizeContent(
+  provider,
+  apiKey,
+  content,
+  maxWords,
+  targetLang,
+  modelPreference
+) {
   let systemPrompt = `You are an expert content analyst and summarizer. Follow this process:
 
 1. **Understand Context First**: Before summarizing, identify the topic, domain (e.g. technology, business, science, education), target audience, and key themes of the content.
@@ -90,38 +223,18 @@ Your summary MUST:
     systemPrompt += `\n- Write the entire summary in ${targetLang}.`;
   }
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        {
-          role: 'user',
-          content: `Analyze the context of the following content, then summarize it:\n\n${content}`,
-        },
-      ],
-      temperature: 0.5,
-      max_tokens: 4096,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(
-      errorBody.error?.message || `API request failed with status ${response.status}`
-    );
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
+  const client = await initializeAI(provider, apiKey, modelPreference);
+  const userPrompt = `Analyze the context of the following content, then summarize it:\n\n${content}`;
+  return generateAIContent(client, 'summarize', systemPrompt, userPrompt);
 }
 
-async function translateContent(apiKey, content, targetLang) {
+async function translateContent(
+  provider,
+  apiKey,
+  content,
+  targetLang,
+  modelPreference
+) {
   const systemPrompt = `You are a professional translator who specializes in natural, human-friendly translations to ${targetLang}.
 
 Translation rules:
@@ -132,39 +245,19 @@ Translation rules:
 - Keep technical terms that are commonly used in their original English form (e.g. "API", "framework", "database", "commit")
 - Do NOT alter code blocks, URLs, file paths, or proper nouns (brand names, product names)
 - If a concept doesn't translate well literally, rephrase it in a way that conveys the same meaning naturally`;
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        {
-          role: 'user',
-          content: `Translate the following markdown content to ${targetLang} in a human-friendly, natural way:\n\n${content}`,
-        },
-      ],
-      temperature: 0.3,
-      max_tokens: 4096,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(
-      errorBody.error?.message || `API request failed with status ${response.status}`
-    );
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
+  const client = await initializeAI(provider, apiKey, modelPreference);
+  const userPrompt = `Translate the following markdown content to ${targetLang} in a human-friendly, natural way:\n\n${content}`;
+  return generateAIContent(client, 'translate', systemPrompt, userPrompt);
 }
 
-async function fetchAndSummarize(apiKey, url, maxWords, targetLang) {
+async function fetchAndSummarize(
+  provider,
+  apiKey,
+  url,
+  maxWords,
+  targetLang,
+  modelPreference
+) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
 
@@ -176,8 +269,9 @@ async function fetchAndSummarize(apiKey, url, maxWords, targetLang) {
     });
   } catch (err) {
     clearTimeout(timeoutId);
-    if (err.name === 'AbortError')
+    if (err.name === 'AbortError') {
       throw new Error('Request timed out while fetching the URL.');
+    }
     throw new Error(`Failed to fetch URL: ${err.message}`);
   }
   clearTimeout(timeoutId);
@@ -195,10 +289,17 @@ async function fetchAndSummarize(apiKey, url, maxWords, targetLang) {
     );
   }
 
-  return callOpenAI(apiKey, text, maxWords, targetLang);
+  return summarizeContent(
+    provider,
+    apiKey,
+    text,
+    maxWords,
+    targetLang,
+    modelPreference
+  );
 }
 
-async function explainWord(apiKey, term, context) {
+async function explainWord(provider, apiKey, term, context, modelPreference) {
   const systemPrompt = `You are a knowledgeable assistant helping a reader understand a specific word or phrase from a summary they are reading.
 
 Your task is to explain the highlighted term clearly in the context of the provided summary. Your explanation must:
@@ -208,7 +309,12 @@ Your task is to explain the highlighted term clearly in the context of the provi
 - Be concise but thorough (2–4 paragraphs or bullet points at most)
 - Use markdown formatting for clarity (bold key concepts, use bullets if listing things)
 - Respond in the EXACT SAME LANGUAGE as the provided summary — do NOT switch languages`;
+  const client = await initializeAI(provider, apiKey, modelPreference);
+  const userPrompt = `Here is the summary context:\n\n${context}\n\n---\n\nPlease explain what **"${term}"** means in the context above.`;
+  return generateAIContent(client, 'explain', systemPrompt, userPrompt);
+}
 
+async function callOpenAI(apiKey, model, systemPrompt, userPrompt) {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -216,16 +322,13 @@ Your task is to explain the highlighted term clearly in the context of the provi
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model,
       messages: [
         { role: 'system', content: systemPrompt },
-        {
-          role: 'user',
-          content: `Here is the summary context:\n\n${context}\n\n---\n\nPlease explain what **"${term}"** means in the context above.`,
-        },
+        { role: 'user', content: userPrompt },
       ],
       temperature: 0.4,
-      max_tokens: 600,
+      max_tokens: 4096,
     }),
   });
 
@@ -237,7 +340,52 @@ Your task is to explain the highlighted term clearly in the context of the provi
   }
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  return data.choices?.[0]?.message?.content || '';
+}
+
+async function callGemini(apiKey, model, systemPrompt, userPrompt) {
+  const response = await fetch(
+    // `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'x-goog-api-key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: 'MODEL',
+            parts: [{ text: systemPrompt }],
+          },
+          {
+            role: 'USER',
+            parts: [{ text: userPrompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 4096,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(
+      errorBody.error?.message || `Gemini API request failed with status ${response.status}`
+    );
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts
+    ?.map((part) => part.text || '')
+    .join('')
+    .trim();
+  if (!text) throw new Error('Gemini returned an empty response.');
+  return text;
 }
 
 function extractTextFromHtml(html) {
