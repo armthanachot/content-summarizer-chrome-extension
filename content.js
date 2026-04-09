@@ -840,6 +840,14 @@
       overflow: auto;
       padding: 16px;
       line-height: 1.75;
+      user-select: text;
+      -webkit-user-select: text;
+      cursor: text;
+    }
+
+    .response-content * {
+      user-select: text;
+      -webkit-user-select: text;
     }
 
     .response-content::-webkit-scrollbar { width: 6px; height: 6px; }
