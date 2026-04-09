@@ -294,7 +294,7 @@
       line-height: 1.5;
     }
 
-    .key-view input {
+    .key-view .key-input {
       width: 100%;
       max-width: 380px;
       border: 2px solid #A5D6A7;
@@ -305,10 +305,37 @@
       background: #FAFFF5;
       color: #2E3A2E;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
     }
 
-    .key-view input:focus { border-color: #43A047; }
+    .key-view .key-input:focus {
+      border-color: #43A047;
+      box-shadow: 0 0 0 3px rgba(102, 187, 106, 0.18);
+      background: #FFFFFF;
+    }
+
+    .key-view .provider-select {
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      font-weight: 600;
+      padding-right: 36px;
+      background-image:
+        linear-gradient(45deg, transparent 50%, #66BB6A 50%),
+        linear-gradient(135deg, #66BB6A 50%, transparent 50%),
+        linear-gradient(#FAFFF5, #FAFFF5);
+      background-position:
+        calc(100% - 18px) calc(50% - 3px),
+        calc(100% - 12px) calc(50% - 3px),
+        100% 0;
+      background-size: 6px 6px, 6px 6px, 2.6em 100%;
+      background-repeat: no-repeat;
+    }
+
+    .key-view .provider-select:hover {
+      border-color: #81C784;
+      background-color: #FFFFFF;
+    }
 
     .key-view .save-btn {
       padding: 10px 36px;
