@@ -97,6 +97,68 @@
       }
     }
 
+    function splitTableRow(line) {
+      const t = line.trim();
+      if (!t.includes('|')) return null;
+      let s = t;
+      if (s.startsWith('|')) s = s.slice(1);
+      if (s.endsWith('|')) s = s.slice(0, -1);
+      const parts = s.split('|').map((cell) => cell.trim());
+      if (parts.length < 2) return null;
+      return parts;
+    }
+
+    function isSeparatorCells(cells) {
+      return cells.every((c) => {
+        const x = c.trim();
+        return /^:?\s*-{3,}\s*:?$/.test(x);
+      });
+    }
+
+    function tryConsumeTable(startIdx) {
+      const headerCells = splitTableRow(lines[startIdx]);
+      if (!headerCells) return null;
+      const sepLine = lines[startIdx + 1];
+      if (sepLine === undefined) return null;
+      const sepCells = splitTableRow(sepLine);
+      if (
+        !sepCells ||
+        sepCells.length !== headerCells.length ||
+        !isSeparatorCells(sepCells)
+      ) {
+        return null;
+      }
+
+      const bodyRows = [];
+      let j = startIdx + 2;
+      for (; j < lines.length; j++) {
+        const raw = lines[j];
+        if (raw.trim() === '') break;
+        const rowCells = splitTableRow(raw);
+        if (!rowCells || rowCells.length < 2) break;
+        const normalized = [];
+        for (let k = 0; k < headerCells.length; k++) {
+          normalized.push(rowCells[k] !== undefined ? rowCells[k] : '');
+        }
+        bodyRows.push(normalized);
+      }
+
+      let html = '<table><thead><tr>';
+      headerCells.forEach((c) => {
+        html += `<th>${inlineFormat(c)}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+      bodyRows.forEach((row) => {
+        html += '<tr>';
+        row.forEach((c) => {
+          html += `<td>${inlineFormat(c)}</td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      return { html, endIdx: j };
+    }
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
@@ -132,6 +194,14 @@
       if (/^(-{3,}|_{3,}|\*{3,})$/.test(line.trim())) {
         closeList();
         result.push('<hr>');
+        continue;
+      }
+
+      const tableBlock = tryConsumeTable(i);
+      if (tableBlock) {
+        closeList();
+        result.push(tableBlock.html);
+        i = tableBlock.endIdx - 1;
         continue;
       }
 
@@ -908,6 +978,32 @@
       color: #555;
     }
 
+    .response-content table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .response-content th,
+    .response-content td {
+      border: 1px solid #A5D6A7;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .response-content th {
+      background: #E8F5E9;
+      color: #1B5E20;
+      font-weight: 600;
+    }
+
+    .response-content tbody tr:nth-child(even) td {
+      background: #FAFFF5;
+    }
+
     .response-content hr {
       border: none;
       border-top: 2px solid #C8E6C9;
@@ -1154,6 +1250,32 @@
       color: #1e3a8a;
     }
 
+    .word-explain-popover-body table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 8px 0;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .word-explain-popover-body th,
+    .word-explain-popover-body td {
+      border: 1px solid #bfdbfe;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .word-explain-popover-body th {
+      background: #dbeafe;
+      color: #1e3a8a;
+      font-weight: 600;
+    }
+
+    .word-explain-popover-body tbody tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
     .word-explain-popover-body hr {
       border: none;
       border-top: 1.5px solid #bfdbfe;
@@ -1358,6 +1480,32 @@
     .summary-chat-msg-assistant .summary-chat-md ul,
     .summary-chat-msg-assistant .summary-chat-md ol { margin: 6px 0; padding-left: 20px; }
     .summary-chat-msg-assistant .summary-chat-md a { color: #60a5fa; }
+
+    .summary-chat-msg-assistant .summary-chat-md table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 8px 0;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md th,
+    .summary-chat-msg-assistant .summary-chat-md td {
+      border: 1px solid #475569;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md th {
+      background: #334155;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md tbody tr:nth-child(even) td {
+      background: #0f172a;
+    }
 
     .summary-chat-msg-user-wrap {
       display: flex;
