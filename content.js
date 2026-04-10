@@ -1200,6 +1200,8 @@
       box-shadow: 0 24px 70px rgba(15, 23, 42, 0.55), 0 0 0 1px rgba(30, 58, 138, 0.35);
       width: 440px;
       height: 520px;
+      min-width: 320px;
+      min-height: 200px;
       display: none;
       flex-direction: column;
       z-index: 2147483649;
@@ -1224,6 +1226,9 @@
       background: linear-gradient(135deg, #1e3a8a 0%, #172554 100%);
       border-bottom: 1px solid #1e40af;
       flex-shrink: 0;
+      cursor: move;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     .summary-chat-title {
@@ -1231,6 +1236,8 @@
       font-weight: 700;
       color: #f8fafc;
       letter-spacing: 0.02em;
+      min-width: 0;
+      flex: 1;
     }
 
     .summary-chat-header-actions {
@@ -1238,6 +1245,11 @@
       align-items: center;
       gap: 8px;
       flex-shrink: 0;
+      cursor: default;
+    }
+
+    .summary-chat-header-actions button {
+      cursor: pointer;
     }
 
     .summary-chat-copy-json {
@@ -1507,6 +1519,8 @@
   let summaryChatMessages = [];
   let summaryChatLoading = false;
   let summaryChatLastError = '';
+  /** Last chat window geometry while main modal is open (cleared when main modal closes). */
+  let summaryChatRect = null;
   let lastContextMenuPos = { x: 100, y: 100 };
   const INIT_W = 560;
   const INIT_H = 500;
@@ -1515,6 +1529,7 @@
     summaryChatMessages = [];
     summaryChatLoading = false;
     summaryChatLastError = '';
+    summaryChatRect = null;
     if (summaryChatPopover) {
       summaryChatPopover.classList.remove('visible');
       const input = summaryChatPopover.querySelector('.summary-chat-input');
@@ -1524,8 +1539,26 @@
     }
   }
 
+  function persistSummaryChatLayout() {
+    if (!summaryChatPopover) return;
+    const rect = summaryChatPopover.getBoundingClientRect();
+    summaryChatRect = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
   function positionSummaryChatPopover() {
     if (!summaryChatPopover) return;
+    if (summaryChatRect) {
+      summaryChatPopover.style.width = summaryChatRect.width + 'px';
+      summaryChatPopover.style.height = summaryChatRect.height + 'px';
+      summaryChatPopover.style.left = summaryChatRect.left + 'px';
+      summaryChatPopover.style.top = summaryChatRect.top + 'px';
+      return;
+    }
     const w = 440;
     const h = 520;
     summaryChatPopover.style.width = w + 'px';
@@ -1925,6 +1958,9 @@
         sendSummaryChatTurn();
       }
     });
+
+    initSummaryChatDrag();
+    initSummaryChatEdgeResize();
 
     // ===================== End Word Explainer Elements =====================
 
@@ -2676,6 +2712,107 @@
 
     document.addEventListener('mouseup', () => {
       resizeDir = null;
+    });
+  }
+
+  // ===================== Summary chat drag / resize =====================
+
+  function initSummaryChatDrag() {
+    if (!summaryChatPopover) return;
+    const header = summaryChatPopover.querySelector('.summary-chat-header');
+    if (!header) return;
+
+    let dragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    header.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.summary-chat-header-actions')) return;
+      dragging = true;
+      const rect = summaryChatPopover.getBoundingClientRect();
+      summaryChatPopover.style.left = rect.left + 'px';
+      summaryChatPopover.style.top = rect.top + 'px';
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      summaryChatPopover.style.left = Math.max(0, e.clientX - offsetX) + 'px';
+      summaryChatPopover.style.top = Math.max(0, e.clientY - offsetY) + 'px';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      persistSummaryChatLayout();
+    });
+  }
+
+  function initSummaryChatEdgeResize() {
+    if (!summaryChatPopover) return;
+
+    const dirs = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
+    let resizeDir = null;
+    let startX, startY, startW, startH, startLeft, startTop;
+    const MIN_W = 320;
+    const MIN_H = 200;
+
+    dirs.forEach((dir) => {
+      const handle = document.createElement('div');
+      handle.className = `resize-handle resize-${dir}`;
+      summaryChatPopover.appendChild(handle);
+
+      handle.addEventListener('mousedown', (e) => {
+        resizeDir = dir;
+        const rect = summaryChatPopover.getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        startW = rect.width;
+        startH = rect.height;
+        startLeft = rect.left;
+        startTop = rect.top;
+        summaryChatPopover.style.left = rect.left + 'px';
+        summaryChatPopover.style.top = rect.top + 'px';
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!resizeDir) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      let newW = startW;
+      let newH = startH;
+      let newLeft = startLeft;
+      let newTop = startTop;
+
+      if (resizeDir.includes('e')) newW = Math.max(MIN_W, startW + dx);
+      if (resizeDir.includes('w')) {
+        newW = Math.max(MIN_W, startW - dx);
+        newLeft = startLeft + (startW - newW);
+      }
+      if (resizeDir.includes('s')) newH = Math.max(MIN_H, startH + dy);
+      if (resizeDir.includes('n')) {
+        newH = Math.max(MIN_H, startH - dy);
+        newTop = startTop + (startH - newH);
+      }
+
+      summaryChatPopover.style.width = newW + 'px';
+      summaryChatPopover.style.height = newH + 'px';
+      summaryChatPopover.style.left = newLeft + 'px';
+      summaryChatPopover.style.top = newTop + 'px';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (!resizeDir) return;
+      resizeDir = null;
+      persistSummaryChatLayout();
     });
   }
 
