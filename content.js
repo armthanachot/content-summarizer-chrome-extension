@@ -474,7 +474,8 @@
     .lang-select-btn:disabled,
     .translate-btn:disabled,
     .copy-btn:disabled,
-    .refresh-btn:disabled {
+    .refresh-btn:disabled,
+    .assistant-chat-btn:disabled {
       opacity: 0.55;
       cursor: not-allowed;
     }
@@ -1188,6 +1189,295 @@
       color: #1e3a8a;
       font-weight: 500;
     }
+
+    /* ===== Summary chat (navy) ===== */
+
+    .summary-chat-popover {
+      position: fixed;
+      background: #0f172a;
+      border: 1.5px solid #1e3a8a;
+      border-radius: 14px;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.55), 0 0 0 1px rgba(30, 58, 138, 0.35);
+      width: 440px;
+      height: 520px;
+      display: none;
+      flex-direction: column;
+      z-index: 2147483649;
+      pointer-events: auto;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 13px;
+      color: #e2e8f0;
+      overflow: hidden;
+    }
+
+    .summary-chat-popover.visible {
+      display: flex;
+      animation: csDropIn 0.2s ease-out;
+    }
+
+    .summary-chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, #1e3a8a 0%, #172554 100%);
+      border-bottom: 1px solid #1e40af;
+      flex-shrink: 0;
+    }
+
+    .summary-chat-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: 0.02em;
+    }
+
+    .summary-chat-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .summary-chat-copy-json {
+      padding: 6px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #f1f5f9;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+
+    .summary-chat-copy-json:hover {
+      background: rgba(255, 255, 255, 0.22);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .summary-chat-copy-json.copied {
+      background: #22c55e;
+      border-color: #16a34a;
+      color: #fff;
+    }
+
+    .summary-chat-close {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s;
+      line-height: 1;
+    }
+
+    .summary-chat-close:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .summary-chat-messages {
+      flex: 1;
+      overflow: auto;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+      background: #0f172a;
+    }
+
+    .summary-chat-messages::-webkit-scrollbar { width: 6px; }
+    .summary-chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .summary-chat-messages::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    .summary-chat-messages::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    .summary-chat-msg-assistant {
+      width: 100%;
+      align-self: stretch;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px 14px;
+      line-height: 1.65;
+      color: #e2e8f0;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md h1,
+    .summary-chat-msg-assistant .summary-chat-md h2,
+    .summary-chat-msg-assistant .summary-chat-md h3 {
+      color: #93c5fd;
+      margin: 10px 0 6px;
+      font-weight: 700;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md h1 { font-size: 1.15em; border-bottom: 1px solid #334155; padding-bottom: 4px; }
+    .summary-chat-msg-assistant .summary-chat-md p { margin: 6px 0; color: #cbd5e1; }
+    .summary-chat-msg-assistant .summary-chat-md strong { color: #f1f5f9; }
+    .summary-chat-msg-assistant .summary-chat-md code {
+      background: #0f172a;
+      color: #7dd3fc;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      border: 1px solid #334155;
+    }
+    .summary-chat-msg-assistant .summary-chat-md pre {
+      background: #020617;
+      color: #a5f3fc;
+      padding: 10px 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 8px 0;
+      font-size: 12px;
+      border: 1px solid #1e3a8a;
+    }
+    .summary-chat-msg-assistant .summary-chat-md pre code { background: none; border: none; padding: 0; color: inherit; }
+    .summary-chat-msg-assistant .summary-chat-md ul,
+    .summary-chat-msg-assistant .summary-chat-md ol { margin: 6px 0; padding-left: 20px; }
+    .summary-chat-msg-assistant .summary-chat-md a { color: #60a5fa; }
+
+    .summary-chat-msg-user-wrap {
+      display: flex;
+      justify-content: flex-end;
+      width: 100%;
+    }
+
+    .summary-chat-msg-user {
+      max-width: 85%;
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
+      border: 1px solid #3b82f6;
+      border-radius: 14px 14px 4px 14px;
+      padding: 10px 14px;
+      line-height: 1.55;
+      color: #f8fafc;
+      font-size: 13px;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .summary-chat-msg-error {
+      width: 100%;
+      background: #450a0a;
+      border: 1px solid #b91c1c;
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #fecaca;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .summary-chat-footer {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid #1e3a8a;
+      background: #0c1422;
+      flex-shrink: 0;
+      align-items: flex-end;
+    }
+
+    .summary-chat-input {
+      flex: 1;
+      min-height: 44px;
+      max-height: 120px;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      line-height: 1.45;
+      resize: vertical;
+      background: #1e293b;
+      color: #f1f5f9;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .summary-chat-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+    }
+
+    .summary-chat-input::placeholder { color: #64748b; }
+
+    .summary-chat-input:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .summary-chat-send {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+
+    .summary-chat-send:hover:not(:disabled) {
+      transform: translateY(-1px);
+      opacity: 0.95;
+    }
+
+    .summary-chat-send:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .assistant-chat-btn {
+      padding: 4px 8px;
+      border: 1.5px solid #C8E6C9;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .assistant-chat-btn:hover:not(:disabled) {
+      background: #E8F5E9;
+      border-color: #81C784;
+    }
+
+    .assistant-chat-btn img {
+      width: 22px;
+      height: 22px;
+      pointer-events: none;
+      display: block;
+    }
+
+    .summary-chat-popover .loading-state {
+      color: #93c5fd;
+      min-height: 72px;
+    }
+
+    .summary-chat-popover .loading-state span {
+      color: #93c5fd;
+    }
+
+    .summary-chat-popover .spinner {
+      border-color: #334155;
+      border-top-color: #60a5fa;
+    }
   `;
 
   // ===================== State =====================
@@ -1212,9 +1502,147 @@
   let modalBody = null;
   let dropdownClickHandler = null;
   let wordExplainPopover = null;
+  let summaryChatPopover = null;
+  /** @type {{ role: 'user' | 'assistant', content: string }[]} */
+  let summaryChatMessages = [];
+  let summaryChatLoading = false;
+  let summaryChatLastError = '';
   let lastContextMenuPos = { x: 100, y: 100 };
   const INIT_W = 560;
   const INIT_H = 500;
+
+  function resetSummaryChatSession() {
+    summaryChatMessages = [];
+    summaryChatLoading = false;
+    summaryChatLastError = '';
+    if (summaryChatPopover) {
+      summaryChatPopover.classList.remove('visible');
+      const input = summaryChatPopover.querySelector('.summary-chat-input');
+      const msgs = summaryChatPopover.querySelector('.summary-chat-messages');
+      if (input) input.value = '';
+      if (msgs) msgs.innerHTML = '';
+    }
+  }
+
+  function positionSummaryChatPopover() {
+    if (!summaryChatPopover) return;
+    const w = 440;
+    const h = 520;
+    summaryChatPopover.style.width = w + 'px';
+    summaryChatPopover.style.height = h + 'px';
+    summaryChatPopover.style.left = Math.max(12, (window.innerWidth - w) / 2) + 'px';
+    summaryChatPopover.style.top = Math.max(12, (window.innerHeight - h) / 2) + 'px';
+  }
+
+  function renderSummaryChatMessages() {
+    if (!summaryChatPopover) return;
+    const container = summaryChatPopover.querySelector('.summary-chat-messages');
+    if (!container) return;
+    container.innerHTML = '';
+    summaryChatMessages.forEach((m) => {
+      if (m.role === 'user') {
+        const wrap = document.createElement('div');
+        wrap.className = 'summary-chat-msg-user-wrap';
+        const bubble = document.createElement('div');
+        bubble.className = 'summary-chat-msg-user';
+        bubble.textContent = m.content;
+        wrap.appendChild(bubble);
+        container.appendChild(wrap);
+      } else {
+        const block = document.createElement('div');
+        block.className = 'summary-chat-msg-assistant';
+        const md = document.createElement('div');
+        md.className = 'summary-chat-md';
+        md.innerHTML = parseMarkdown(m.content);
+        block.appendChild(md);
+        container.appendChild(block);
+      }
+    });
+    if (summaryChatLoading) {
+      const loading = document.createElement('div');
+      loading.className = 'summary-chat-msg-assistant';
+      loading.innerHTML =
+        '<div class="loading-state"><div class="spinner"></div><span>Thinking…</span></div>';
+      container.appendChild(loading);
+    }
+    if (summaryChatLastError) {
+      const err = document.createElement('div');
+      err.className = 'summary-chat-msg-error';
+      err.textContent = `Error: ${summaryChatLastError}`;
+      container.appendChild(err);
+    }
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function setSummaryChatInputDisabled(disabled) {
+    if (!summaryChatPopover) return;
+    const input = summaryChatPopover.querySelector('.summary-chat-input');
+    const send = summaryChatPopover.querySelector('.summary-chat-send');
+    if (input) input.disabled = disabled;
+    if (send) send.disabled = disabled;
+  }
+
+  function openSummaryChatPanel() {
+    if (!summaryChatPopover || !rawResponse || !rawResponse.trim()) return;
+    positionSummaryChatPopover();
+    summaryChatPopover.classList.add('visible');
+    renderSummaryChatMessages();
+    setTimeout(() => summaryChatPopover.querySelector('.summary-chat-input')?.focus(), 50);
+  }
+
+  async function sendSummaryChatTurn() {
+    if (!summaryChatPopover || summaryChatLoading) return;
+    const input = summaryChatPopover.querySelector('.summary-chat-input');
+    const text = (input && input.value ? input.value : '').trim();
+    if (!text) return;
+    const context = (rawResponse || '').trim();
+    if (!context) return;
+
+    summaryChatLastError = '';
+    input.value = '';
+    summaryChatMessages.push({ role: 'user', content: text });
+    summaryChatLoading = true;
+    setSummaryChatInputDisabled(true);
+    renderSummaryChatMessages();
+
+    try {
+      if (!isContextValid()) throw new Error('Extension was reloaded. Please refresh the page.');
+      const reply = await new Promise((resolve, reject) => {
+        try {
+          chrome.runtime.sendMessage(
+            {
+              type: 'chat-about-summary',
+              provider: currentProvider,
+              apiKey: getActiveApiKey(),
+              summaryContext: context,
+              messages: summaryChatMessages,
+            },
+            (resp) => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
+              }
+              if (!resp) {
+                reject(new Error('No response from background script.'));
+                return;
+              }
+              if (resp.success) resolve(resp.data);
+              else reject(new Error(resp.error));
+            }
+          );
+        } catch (e) {
+          reject(e);
+        }
+      });
+      summaryChatMessages.push({ role: 'assistant', content: reply });
+    } catch (err) {
+      summaryChatLastError = err.message || String(err);
+    } finally {
+      summaryChatLoading = false;
+      setSummaryChatInputDisabled(false);
+      renderSummaryChatMessages();
+    }
+  }
 
   function normalizeProvider(provider) {
     return PROVIDER_OPTIONS.some((option) => option.value === provider)
@@ -1423,18 +1851,89 @@
     initExplainResize(wordExplainPopover);
 
     modalShadow.addEventListener('mousedown', (e) => {
-      if (!e.composedPath().includes(wordExplainPopover)) {
+      const path = e.composedPath();
+      if (!path.includes(wordExplainPopover)) {
         wordExplainPopover.classList.remove('visible');
+      }
+    });
+
+    // ===================== Summary chat popover =====================
+
+    summaryChatPopover = document.createElement('div');
+    summaryChatPopover.className = 'summary-chat-popover';
+    summaryChatPopover.innerHTML = `
+      <div class="summary-chat-header">
+        <span class="summary-chat-title">Chat about summary</span>
+        <div class="summary-chat-header-actions">
+          <button type="button" class="summary-chat-copy-json" title="Copy chat as JSON">Copy JSON</button>
+          <button type="button" class="summary-chat-close" title="Close">✕</button>
+        </div>
+      </div>
+      <div class="summary-chat-messages"></div>
+      <div class="summary-chat-footer">
+        <textarea class="summary-chat-input" placeholder="Ask about this summary..." rows="2"></textarea>
+        <button type="button" class="summary-chat-send">Send</button>
+      </div>
+    `;
+    modalShadow.appendChild(summaryChatPopover);
+
+    summaryChatPopover.querySelector('.summary-chat-close').addEventListener('click', () => {
+      summaryChatPopover.classList.remove('visible');
+    });
+
+    summaryChatPopover.querySelector('.summary-chat-copy-json').addEventListener('click', () => {
+      const copyBtn = summaryChatPopover.querySelector('.summary-chat-copy-json');
+      const payload = {
+        summaryContext: rawResponse || '',
+        messages: summaryChatMessages.map((m) => ({ role: m.role, content: m.content })),
+      };
+      const text = JSON.stringify(payload, null, 2);
+      navigator.clipboard.writeText(text).then(
+        () => {
+          copyBtn.classList.add('copied');
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => {
+            copyBtn.classList.remove('copied');
+            copyBtn.textContent = 'Copy JSON';
+          }, 1600);
+        },
+        () => {
+          const tmp = document.createElement('textarea');
+          tmp.value = text;
+          tmp.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
+          document.body.appendChild(tmp);
+          tmp.select();
+          document.execCommand('copy');
+          document.body.removeChild(tmp);
+          copyBtn.classList.add('copied');
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => {
+            copyBtn.classList.remove('copied');
+            copyBtn.textContent = 'Copy JSON';
+          }, 1600);
+        }
+      );
+    });
+
+    summaryChatPopover.querySelector('.summary-chat-send').addEventListener('click', () => {
+      sendSummaryChatTurn();
+    });
+
+    summaryChatPopover.querySelector('.summary-chat-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendSummaryChatTurn();
       }
     });
 
     // ===================== End Word Explainer Elements =====================
 
     modalHeader.querySelector('.close-btn').addEventListener('click', () => {
-      modal.style.display = 'none';
+      hideModal();
     });
 
     modalHeader.querySelector('.settings-btn').addEventListener('click', () => {
+      if (summaryChatPopover) summaryChatPopover.classList.remove('visible');
       const currentW = parseFloat(modal.style.width);
       if (currentW > INIT_W) {
         modal.style.transition = 'width 0.3s ease';
@@ -1460,6 +1959,7 @@
 
   function hideModal() {
     modal.style.display = 'none';
+    resetSummaryChatSession();
   }
 
   function isModalVisible() {
@@ -1641,6 +2141,7 @@
           <div class="translate-wrapper">
             <button class="translate-btn" title="Translate"></button>
           </div>
+          <button type="button" class="assistant-chat-btn" title="Chat about this summary" aria-label="Chat about summary"></button>
           <button class="copy-btn">📋 Copy</button>
         </div>
       </div>
@@ -1665,6 +2166,7 @@
     const responseContent = responsePanel.querySelector('.response-content');
     const translateBtn = responsePanel.querySelector('.translate-btn');
     const translateWrapper = responsePanel.querySelector('.translate-wrapper');
+    const assistantChatBtn = responsePanel.querySelector('.assistant-chat-btn');
 
     let inputMode = 'text';
 
@@ -1723,6 +2225,14 @@
     translateImg.alt = 'Translate';
     translateBtn.appendChild(translateImg);
 
+    const assistantImg = document.createElement('img');
+    try {
+      assistantImg.src = chrome.runtime.getURL('icons/assistant.png');
+    } catch {}
+    assistantImg.alt = 'Assistant';
+    assistantChatBtn.appendChild(assistantImg);
+    assistantChatBtn.addEventListener('click', () => openSummaryChatPanel());
+
     if (pendingText) {
       textarea.value = pendingText;
       pendingText = '';
@@ -1759,6 +2269,7 @@
       expandWithResponse(divider, responsePanel);
       responseContent.innerHTML = parseMarkdown(rawResponse);
     }
+    assistantChatBtn.disabled = !rawResponse;
 
     async function runSummarize() {
       let messagePayload;
@@ -1851,6 +2362,11 @@
         originalResponse = result;
         responseCache['original'] = result;
         responseContent.innerHTML = parseMarkdown(result);
+        summaryChatMessages = [];
+        summaryChatLastError = '';
+        if (summaryChatPopover && summaryChatPopover.classList.contains('visible')) {
+          renderSummaryChatMessages();
+        }
       } catch (err) {
         responseContent.innerHTML = `<div class="error-text">Error: ${escapeHtml(err.message)}</div>`;
         if (inputMode === 'url') {
@@ -1914,6 +2430,7 @@
       clearBtn.disabled = locked;
       langSelectBtn.disabled = locked;
       translateBtn.disabled = locked;
+      assistantChatBtn.disabled = locked || !rawResponse;
       copyBtn.disabled = locked;
       refreshBtn.disabled = locked;
       textarea.disabled = locked;

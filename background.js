@@ -13,6 +13,7 @@ const PROVIDER_CONFIGS = {
       summarize: 'gpt-4o-mini',
       translate: 'gpt-4o-mini',
       explain: 'gpt-4o-mini',
+      chat: 'gpt-4o-mini',
     },
   },
   gemini: {
@@ -25,6 +26,7 @@ const PROVIDER_CONFIGS = {
       summarize: 'gemini-3-flash-preview',
       translate: 'gemini-3-flash-preview',
       explain: 'gemini-3-flash-preview',
+      chat: 'gemini-3-flash-preview',
     },
   },
 };
@@ -190,6 +192,19 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
+
+  if (request.type === 'chat-about-summary') {
+    chatAboutSummary(
+      request.provider,
+      request.apiKey,
+      request.summaryContext,
+      request.messages,
+      request.model
+    )
+      .then((result) => sendResponse({ success: true, data: result }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
 });
 
 async function summarizeContent(
@@ -297,6 +312,116 @@ async function fetchAndSummarize(
     targetLang,
     modelPreference
   );
+}
+
+const CHAT_SYSTEM_INSTRUCTION = `You are a helpful assistant. The user is discussing a summary they generated. Use the provided summary as your primary context. Answer questions based on that summary; if something is not covered in the summary, say so clearly. Be concise and use markdown when it helps (headings, bullets, bold). Respond in the same language the user writes in unless they ask otherwise.`;
+
+async function chatAboutSummary(
+  provider,
+  apiKey,
+  summaryContext,
+  messages,
+  modelPreference
+) {
+  const trimmedSummary = (summaryContext || '').trim();
+  if (!trimmedSummary) {
+    throw new Error('No summary context available for chat.');
+  }
+  const history = Array.isArray(messages) ? messages : [];
+  if (
+    !history.length ||
+    history[history.length - 1].role !== 'user' ||
+    !(history[history.length - 1].content || '').trim()
+  ) {
+    throw new Error('Invalid chat messages: last message must be a non-empty user message.');
+  }
+
+  const client = await initializeAI(provider, apiKey, modelPreference);
+  const model = resolveModelSelection(client.provider, 'chat', client.modelPreference);
+
+  if (client.provider === 'gemini') {
+    return callGeminiChat(client.apiKey, model, trimmedSummary, history);
+  }
+  return callOpenAIChat(client.apiKey, model, trimmedSummary, history);
+}
+
+async function callOpenAIChat(apiKey, model, summaryContext, history) {
+  const systemContent = `${CHAT_SYSTEM_INSTRUCTION}\n\n---\nSummary (markdown):\n${summaryContext}\n---`;
+  const openAiMessages = [
+    { role: 'system', content: systemContent },
+    ...history.map((m) => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: m.content || '',
+    })),
+  ];
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: openAiMessages,
+      temperature: 0.4,
+      max_tokens: 4096,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(
+      errorBody.error?.message || `API request failed with status ${response.status}`
+    );
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
+async function callGeminiChat(apiKey, model, summaryContext, history) {
+  const systemBlock = `${CHAT_SYSTEM_INSTRUCTION}\n\n---\nSummary (markdown):\n${summaryContext}\n---`;
+  const contents = history.map((m) => ({
+    role: m.role === 'user' ? 'USER' : 'MODEL',
+    parts: [{ text: m.content || '' }],
+  }));
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'x-goog-api-key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemBlock }],
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 4096,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(
+      errorBody.error?.message || `Gemini API request failed with status ${response.status}`
+    );
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts
+    ?.map((part) => part.text || '')
+    .join('')
+    .trim();
+  if (!text) throw new Error('Gemini returned an empty response.');
+  return text;
 }
 
 async function explainWord(provider, apiKey, term, context, modelPreference) {
