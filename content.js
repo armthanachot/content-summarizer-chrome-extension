@@ -2119,13 +2119,6 @@
     initExplainDrag(wordExplainPopover, wordExplainPopover.querySelector('.word-explain-popover-header'));
     initExplainResize(wordExplainPopover);
 
-    modalShadow.addEventListener('mousedown', (e) => {
-      const path = e.composedPath();
-      if (!path.includes(wordExplainPopover)) {
-        wordExplainPopover.classList.remove('visible');
-      }
-    });
-
     // ===================== Summary chat popover =====================
 
     summaryChatPopover = document.createElement('div');
