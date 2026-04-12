@@ -1638,6 +1638,119 @@
       border-color: #334155;
       border-top-color: #60a5fa;
     }
+
+    /* ===== Minimized floating dock (right edge) ===== */
+
+    .cs-minimized-dock {
+      position: fixed;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1.5px solid rgba(0, 0, 0, 0.18);
+      border-radius: 14px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+      z-index: 2147483650;
+      pointer-events: auto;
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+    }
+
+    .cs-minimized-dock::-webkit-scrollbar { width: 4px; }
+    .cs-minimized-dock::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+
+    .cs-minimized-btn {
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+      transition: transform 0.15s, box-shadow 0.15s;
+      flex-shrink: 0;
+    }
+
+    .cs-minimized-btn:hover {
+      transform: scale(1.06);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    }
+
+    .cs-minimized-btn img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      pointer-events: none;
+      display: block;
+    }
+
+    .cs-minimized-btn-emoji {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .word-explain-popover-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .word-explain-popover-minimize {
+      width: 22px;
+      height: 22px;
+      border: none;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s;
+      line-height: 1;
+    }
+
+    .word-explain-popover-minimize:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .summary-chat-minimize {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s;
+      line-height: 1;
+    }
+
+    .summary-chat-minimize:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
   `;
 
   // ===================== State =====================
@@ -1663,6 +1776,17 @@
   let dropdownClickHandler = null;
   let wordExplainPopover = null;
   let summaryChatPopover = null;
+  let minimizedDock = null;
+
+  const MINIMIZED_PANEL_ORDER = ['summary', 'explain', 'chat'];
+  const MINIMIZED_PANEL_LABELS = {
+    summary: 'Content Summarizer',
+    explain: 'Explain',
+    chat: 'Chat',
+  };
+  /** @type {Set<'summary' | 'explain' | 'chat'>} */
+  let minimizedPanels = new Set();
+
   /** @type {{ role: 'user' | 'assistant', content: string }[]} */
   let summaryChatMessages = [];
   let summaryChatLoading = false;
@@ -1680,6 +1804,8 @@
     summaryChatLoading = false;
     summaryChatLastError = '';
     summaryChatRect = null;
+    minimizedPanels.delete('chat');
+    if (minimizedDock) updateMinimizedDock();
     if (summaryChatPopover) {
       summaryChatPopover.classList.remove('visible');
       const input = summaryChatPopover.querySelector('.summary-chat-input');
@@ -1687,6 +1813,74 @@
       if (input) input.value = '';
       if (msgs) msgs.innerHTML = '';
     }
+  }
+
+  function updateMinimizedDock() {
+    if (!minimizedDock) return;
+    minimizedDock.innerHTML = '';
+    MINIMIZED_PANEL_ORDER.forEach((key) => {
+      if (!minimizedPanels.has(key)) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cs-minimized-btn';
+      if (key === 'explain') btn.classList.add('cs-minimized-btn-emoji');
+      btn.title = MINIMIZED_PANEL_LABELS[key];
+      btn.setAttribute('aria-label', MINIMIZED_PANEL_LABELS[key]);
+      if (key === 'summary') {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = chrome.runtime.getURL('icons/icon48.png');
+        btn.appendChild(img);
+      } else if (key === 'chat') {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = chrome.runtime.getURL('icons/assistant.png');
+        btn.appendChild(img);
+      } else {
+        btn.textContent = '🔍';
+      }
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        restoreMinimizedPanel(key);
+      });
+      minimizedDock.appendChild(btn);
+    });
+    minimizedDock.style.display = minimizedPanels.size > 0 ? 'flex' : 'none';
+  }
+
+  function restoreMinimizedPanel(key) {
+    if (!minimizedPanels.has(key)) return;
+    minimizedPanels.delete(key);
+    updateMinimizedDock();
+    if (key === 'summary') {
+      modal.style.display = 'flex';
+    } else if (key === 'explain') {
+      wordExplainPopover.classList.add('visible');
+    } else if (key === 'chat') {
+      positionSummaryChatPopover();
+      summaryChatPopover.classList.add('visible');
+      setTimeout(() => summaryChatPopover.querySelector('.summary-chat-input')?.focus(), 50);
+    }
+  }
+
+  function minimizeSummaryPanel() {
+    minimizedPanels.add('summary');
+    modal.style.display = 'none';
+    updateMinimizedDock();
+  }
+
+  function minimizeExplainPanel() {
+    wordExplainPopover.classList.remove('visible');
+    minimizedPanels.add('explain');
+    updateMinimizedDock();
+  }
+
+  function minimizeChatPanel() {
+    persistSummaryChatLayout();
+    summaryChatPopover.classList.remove('visible');
+    minimizedPanels.add('chat');
+    updateMinimizedDock();
   }
 
   function persistSummaryChatLayout() {
@@ -1771,6 +1965,8 @@
 
   function openSummaryChatPanel() {
     if (!summaryChatPopover || !rawResponse || !rawResponse.trim()) return;
+    minimizedPanels.delete('chat');
+    if (minimizedDock) updateMinimizedDock();
     const titleEl = summaryChatPopover.querySelector('.summary-chat-title');
     if (titleEl && !fastChatStandaloneMode) {
       titleEl.textContent = 'Chat about summary';
@@ -2086,7 +2282,8 @@
       <span class="modal-title">Content Summarizer</span>
       <div class="header-actions">
         <button class="header-btn settings-btn" title="API Key Settings">⚙</button>
-        <button class="header-btn close-btn" title="Close">✕</button>
+        <button type="button" class="header-btn minimize-btn" title="Minimize">−</button>
+        <button type="button" class="header-btn close-btn" title="Close">✕</button>
       </div>
     `;
     modal.appendChild(modalHeader);
@@ -2106,13 +2303,22 @@
       <div class="word-explain-popover-header">
         <span class="word-explain-popover-title">🔍 Explain</span>
         <span class="word-explain-popover-term"></span>
-        <button class="word-explain-popover-close">✕</button>
+        <div class="word-explain-popover-header-actions">
+          <button type="button" class="word-explain-popover-minimize" title="Minimize">−</button>
+          <button type="button" class="word-explain-popover-close" title="Close">✕</button>
+        </div>
       </div>
       <div class="word-explain-popover-body"></div>
     `;
     modalShadow.appendChild(wordExplainPopover);
 
+    wordExplainPopover.querySelector('.word-explain-popover-minimize').addEventListener('click', () => {
+      minimizeExplainPanel();
+    });
+
     wordExplainPopover.querySelector('.word-explain-popover-close').addEventListener('click', () => {
+      minimizedPanels.delete('explain');
+      if (minimizedDock) updateMinimizedDock();
       wordExplainPopover.classList.remove('visible');
     });
 
@@ -2128,6 +2334,7 @@
         <span class="summary-chat-title">Chat about summary</span>
         <div class="summary-chat-header-actions">
           <button type="button" class="summary-chat-copy-json" title="Copy chat as JSON">Copy JSON</button>
+          <button type="button" class="summary-chat-minimize" title="Minimize">−</button>
           <button type="button" class="summary-chat-close" title="Close">✕</button>
         </div>
       </div>
@@ -2139,8 +2346,14 @@
     `;
     modalShadow.appendChild(summaryChatPopover);
 
+    summaryChatPopover.querySelector('.summary-chat-minimize').addEventListener('click', () => {
+      minimizeChatPanel();
+    });
+
     summaryChatPopover.querySelector('.summary-chat-close').addEventListener('click', () => {
       fastChatStandaloneMode = false;
+      minimizedPanels.delete('chat');
+      if (minimizedDock) updateMinimizedDock();
       summaryChatPopover.classList.remove('visible');
     });
 
@@ -2199,7 +2412,13 @@
 
     // ===================== End Word Explainer Elements =====================
 
+    modalHeader.querySelector('.minimize-btn').addEventListener('click', () => {
+      minimizeSummaryPanel();
+    });
+
     modalHeader.querySelector('.close-btn').addEventListener('click', () => {
+      minimizedPanels.delete('summary');
+      if (minimizedDock) updateMinimizedDock();
       hideModal();
     });
 
@@ -2220,11 +2439,19 @@
 
     initDrag();
     initEdgeResize();
+
+    minimizedDock = document.createElement('div');
+    minimizedDock.className = 'cs-minimized-dock';
+    minimizedDock.style.display = 'none';
+    modalShadow.appendChild(minimizedDock);
+    updateMinimizedDock();
   }
 
   // ===================== Open / Toggle =====================
 
   function showModal() {
+    minimizedPanels.delete('summary');
+    if (minimizedDock) updateMinimizedDock();
     modal.style.display = 'flex';
   }
 
@@ -3112,7 +3339,7 @@
     let offsetY = 0;
 
     header.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.word-explain-popover-close')) return;
+      if (e.target.closest('.word-explain-popover-header-actions')) return;
       dragging = true;
       const rect = popover.getBoundingClientRect();
       popover.style.left = rect.left + 'px';
@@ -3259,6 +3486,8 @@
             <span>Explaining...</span>
           </div>
         `;
+        minimizedPanels.delete('explain');
+        if (minimizedDock) updateMinimizedDock();
         wordExplainPopover.classList.add('visible');
 
         (async () => {
