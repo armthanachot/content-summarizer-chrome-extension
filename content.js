@@ -1639,18 +1639,18 @@
       border-top-color: #60a5fa;
     }
 
-    /* ===== Minimized floating dock (right edge) ===== */
+    /* ===== Minimized floating dock (right edge, draggable by border) ===== */
 
     .cs-minimized-dock {
       position: fixed;
       right: 14px;
       top: 50%;
       transform: translateY(-50%);
+      left: auto;
       display: none;
       flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 8px;
+      align-items: stretch;
+      box-sizing: border-box;
       background: rgba(255, 255, 255, 0.08);
       border: 1.5px solid rgba(0, 0, 0, 0.18);
       border-radius: 14px;
@@ -1658,11 +1658,74 @@
       z-index: 2147483650;
       pointer-events: auto;
       max-height: calc(100vh - 48px);
-      overflow-y: auto;
     }
 
-    .cs-minimized-dock::-webkit-scrollbar { width: 4px; }
-    .cs-minimized-dock::-webkit-scrollbar-thumb {
+    .cs-minimized-dock.cs-minimized-dock--placed {
+      right: auto;
+      top: auto;
+      transform: none;
+    }
+
+    .cs-minimized-dock-edge {
+      position: absolute;
+      z-index: 2;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .cs-minimized-dock-edge:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    .cs-minimized-dock-edge-n {
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 10px;
+      cursor: move;
+    }
+
+    .cs-minimized-dock-edge-s {
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 10px;
+      cursor: move;
+    }
+
+    .cs-minimized-dock-edge-w {
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 10px;
+      cursor: move;
+    }
+
+    .cs-minimized-dock-edge-e {
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 10px;
+      cursor: move;
+    }
+
+    .cs-minimized-dock-buttons {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 8px;
+      max-height: calc(100vh - 48px);
+      overflow-x: hidden;
+      overflow-y: auto;
+      box-sizing: border-box;
+    }
+
+    .cs-minimized-dock-buttons::-webkit-scrollbar { width: 4px; }
+    .cs-minimized-dock-buttons::-webkit-scrollbar-thumb {
       background: rgba(0, 0, 0, 0.2);
       border-radius: 3px;
     }
@@ -1787,6 +1850,11 @@
   /** @type {Set<'summary' | 'explain' | 'chat'>} */
   let minimizedPanels = new Set();
 
+  /** Pixel position for minimized dock after first layout or drag; null = use default CSS (right / centered). */
+  let minimizedDockPos = null;
+
+  let minimizedDockResizeBound = false;
+
   /** @type {{ role: 'user' | 'assistant', content: string }[]} */
   let summaryChatMessages = [];
   let summaryChatLoading = false;
@@ -1815,9 +1883,34 @@
     }
   }
 
+  function applyMinimizedDockPosition() {
+    if (!minimizedDock || !minimizedDockPos) return;
+    const pad = 4;
+    const w = minimizedDock.offsetWidth || 60;
+    const h = minimizedDock.offsetHeight || 60;
+    let l = minimizedDockPos.left;
+    let t = minimizedDockPos.top;
+    l = Math.max(pad, Math.min(l, window.innerWidth - w - pad));
+    t = Math.max(pad, Math.min(t, window.innerHeight - h - pad));
+    minimizedDockPos.left = l;
+    minimizedDockPos.top = t;
+    minimizedDock.classList.add('cs-minimized-dock--placed');
+    minimizedDock.style.left = `${l}px`;
+    minimizedDock.style.top = `${t}px`;
+  }
+
+  function finalizeMinimizedDockDefaultPosition() {
+    if (!minimizedDock || minimizedDock.style.display === 'none') return;
+    const r = minimizedDock.getBoundingClientRect();
+    minimizedDockPos = { left: r.left, top: r.top };
+    applyMinimizedDockPosition();
+  }
+
   function updateMinimizedDock() {
     if (!minimizedDock) return;
-    minimizedDock.innerHTML = '';
+    const buttonsWrap = minimizedDock.querySelector('.cs-minimized-dock-buttons');
+    if (!buttonsWrap) return;
+    buttonsWrap.innerHTML = '';
     MINIMIZED_PANEL_ORDER.forEach((key) => {
       if (!minimizedPanels.has(key)) return;
       const btn = document.createElement('button');
@@ -1844,9 +1937,83 @@
         e.stopPropagation();
         restoreMinimizedPanel(key);
       });
-      minimizedDock.appendChild(btn);
+      buttonsWrap.appendChild(btn);
     });
-    minimizedDock.style.display = minimizedPanels.size > 0 ? 'flex' : 'none';
+
+    if (minimizedPanels.size > 0) {
+      minimizedDock.style.display = 'flex';
+      if (minimizedDockPos) {
+        minimizedDock.classList.add('cs-minimized-dock--placed');
+        requestAnimationFrame(() => applyMinimizedDockPosition());
+      } else {
+        minimizedDock.classList.remove('cs-minimized-dock--placed');
+        minimizedDock.style.left = '';
+        minimizedDock.style.top = '';
+        minimizedDock.style.right = '';
+        minimizedDock.style.transform = '';
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => finalizeMinimizedDockDefaultPosition());
+        });
+      }
+    } else {
+      minimizedDock.style.display = 'none';
+    }
+  }
+
+  function initMinimizedDockDrag() {
+    if (!minimizedDock) return;
+    const edges = minimizedDock.querySelectorAll('.cs-minimized-dock-edge');
+    if (!edges.length) return;
+
+    let dragging = false;
+    let startX = 0;
+    let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+
+    function onMove(e) {
+      if (!dragging || !minimizedDockPos) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      minimizedDockPos.left = startLeft + dx;
+      minimizedDockPos.top = startTop + dy;
+      applyMinimizedDockPosition();
+      e.preventDefault();
+    }
+
+    function onUp() {
+      dragging = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+
+    edges.forEach((edge) => {
+      edge.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (minimizedDockPos === null) {
+          finalizeMinimizedDockDefaultPosition();
+        }
+        if (!minimizedDockPos) return;
+        dragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = minimizedDockPos.left;
+        startTop = minimizedDockPos.top;
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    });
+
+    if (!minimizedDockResizeBound) {
+      minimizedDockResizeBound = true;
+      window.addEventListener('resize', () => {
+        if (minimizedDockPos && minimizedDock && minimizedPanels.size > 0) {
+          applyMinimizedDockPosition();
+        }
+      });
+    }
   }
 
   function restoreMinimizedPanel(key) {
@@ -2443,7 +2610,17 @@
     minimizedDock = document.createElement('div');
     minimizedDock.className = 'cs-minimized-dock';
     minimizedDock.style.display = 'none';
+    ['n', 'e', 's', 'w'].forEach((dir) => {
+      const edge = document.createElement('div');
+      edge.className = `cs-minimized-dock-edge cs-minimized-dock-edge-${dir}`;
+      edge.title = 'Drag to move';
+      minimizedDock.appendChild(edge);
+    });
+    const dockButtons = document.createElement('div');
+    dockButtons.className = 'cs-minimized-dock-buttons';
+    minimizedDock.appendChild(dockButtons);
     modalShadow.appendChild(minimizedDock);
+    initMinimizedDockDrag();
     updateMinimizedDock();
   }
 
