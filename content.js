@@ -1669,6 +1669,8 @@
   let summaryChatLastError = '';
   /** Last chat window geometry while main modal is open (cleared when main modal closes). */
   let summaryChatRect = null;
+  /** True when chat was opened from context menu "Fast Chat" without the main modal. */
+  let fastChatStandaloneMode = false;
   let lastContextMenuPos = { x: 100, y: 100 };
   const INIT_W = 560;
   const INIT_H = 500;
@@ -1763,12 +1765,98 @@
     if (send) send.disabled = disabled;
   }
 
+  function isSummaryChatPopoverVisible() {
+    return !!(summaryChatPopover && summaryChatPopover.classList.contains('visible'));
+  }
+
   function openSummaryChatPanel() {
     if (!summaryChatPopover || !rawResponse || !rawResponse.trim()) return;
+    const titleEl = summaryChatPopover.querySelector('.summary-chat-title');
+    if (titleEl && !fastChatStandaloneMode) {
+      titleEl.textContent = 'Chat about summary';
+    }
     positionSummaryChatPopover();
     summaryChatPopover.classList.add('visible');
     renderSummaryChatMessages();
     setTimeout(() => summaryChatPopover.querySelector('.summary-chat-input')?.focus(), 50);
+  }
+
+  function renderStandaloneFastChatNeedKey() {
+    if (!summaryChatPopover) return;
+    const titleEl = summaryChatPopover.querySelector('.summary-chat-title');
+    if (titleEl) titleEl.textContent = 'Fast Chat';
+    const container = summaryChatPopover.querySelector('.summary-chat-messages');
+    const input = summaryChatPopover.querySelector('.summary-chat-input');
+    if (container) {
+      container.innerHTML = `
+        <div class="summary-chat-msg-assistant">
+          <div class="summary-chat-md">
+            <p>Add your API key first: click the <strong>Content Summarizer</strong> icon on the browser toolbar, enter your key in settings, then run <strong>Fast Chat</strong> again.</p>
+          </div>
+        </div>`;
+    }
+    if (input) {
+      input.value = '';
+      input.placeholder = 'API key required…';
+      input.disabled = true;
+    }
+    const send = summaryChatPopover.querySelector('.summary-chat-send');
+    if (send) send.disabled = true;
+  }
+
+  function openStandaloneFastChat(selectionText) {
+    if (!isContextValid()) return;
+    ensureModal();
+    fastChatStandaloneMode = true;
+    modal.style.display = 'none';
+    resetSummaryChatSession();
+    rawResponse = selectionText;
+    originalResponse = selectionText;
+    responseCache = {};
+
+    const finish = () => {
+      if (!summaryChatPopover) return;
+      const titleEl = summaryChatPopover.querySelector('.summary-chat-title');
+      if (titleEl) titleEl.textContent = 'Fast Chat';
+      if (!getActiveApiKey()) {
+        renderStandaloneFastChatNeedKey();
+        positionSummaryChatPopover();
+        summaryChatPopover.classList.add('visible');
+        return;
+      }
+      summaryChatMessages = [];
+      summaryChatLastError = '';
+      const input = summaryChatPopover.querySelector('.summary-chat-input');
+      const send = summaryChatPopover.querySelector('.summary-chat-send');
+      if (input) {
+        input.disabled = false;
+        input.placeholder = 'Ask about this summary...';
+      }
+      if (send) send.disabled = false;
+      positionSummaryChatPopover();
+      summaryChatPopover.classList.add('visible');
+      renderSummaryChatMessages();
+      setTimeout(() => input?.focus(), 50);
+    };
+
+    try {
+      chrome.storage.local.get(
+        [
+          STORAGE_KEYS.provider,
+          STORAGE_KEYS.tokens.openai,
+          STORAGE_KEYS.tokens.gemini,
+        ],
+        (result) => {
+          if (!isContextValid()) return;
+          currentProvider = normalizeProvider(result[STORAGE_KEYS.provider]);
+          setTokenForProvider('openai', result[STORAGE_KEYS.tokens.openai] || '');
+          setTokenForProvider('gemini', result[STORAGE_KEYS.tokens.gemini] || '');
+          finish();
+        }
+      );
+    } catch {
+      finish();
+    }
   }
 
   async function sendSummaryChatTurn() {
@@ -2059,6 +2147,7 @@
     modalShadow.appendChild(summaryChatPopover);
 
     summaryChatPopover.querySelector('.summary-chat-close').addEventListener('click', () => {
+      fastChatStandaloneMode = false;
       summaryChatPopover.classList.remove('visible');
     });
 
@@ -2100,11 +2189,16 @@
       sendSummaryChatTurn();
     });
 
-    summaryChatPopover.querySelector('.summary-chat-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendSummaryChatTurn();
-      }
+    const summaryChatInputEl = summaryChatPopover.querySelector('.summary-chat-input');
+    summaryChatInputEl.setAttribute('autocomplete', 'off');
+    summaryChatInputEl.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || e.shiftKey) return;
+      // IME / CJK / some Thai keyboards: never hijack Enter during composition
+      if (e.isComposing || e.keyCode === 229) return;
+      // While the model is replying, Enter should insert a newline (default), not call send
+      if (summaryChatLoading) return;
+      e.preventDefault();
+      sendSummaryChatTurn();
     });
 
     initSummaryChatDrag();
@@ -2143,6 +2237,7 @@
 
   function hideModal() {
     modal.style.display = 'none';
+    fastChatStandaloneMode = false;
     resetSummaryChatSession();
   }
 
@@ -2152,6 +2247,8 @@
 
   function openModal(prefillText) {
     if (!isContextValid()) return;
+    fastChatStandaloneMode = false;
+    if (summaryChatPopover) summaryChatPopover.classList.remove('visible');
     pendingText = prefillText || '';
     ensureModal();
     showModal();
@@ -2182,11 +2279,16 @@
   }
 
   function toggleModal() {
-    if (!isModalVisible()) {
-      openModal('');
-    } else {
+    if (isModalVisible()) {
       hideModal();
+      return;
     }
+    if (isSummaryChatPopoverVisible() && fastChatStandaloneMode) {
+      fastChatStandaloneMode = false;
+      resetSummaryChatSession();
+      return;
+    }
+    openModal('');
   }
 
   // ===================== Views =====================
@@ -3113,6 +3215,17 @@
       if (request.type === 'summarize-selection') {
         const term = (request.term || '').trim();
         openModal(term);
+        sendResponse({ ok: true });
+        return;
+      }
+
+      if (request.type === 'fast-chat-selection') {
+        const text = (request.term || '').trim();
+        if (!text) {
+          sendResponse({ ok: false });
+          return;
+        }
+        openStandaloneFastChat(text);
         sendResponse({ ok: true });
         return;
       }

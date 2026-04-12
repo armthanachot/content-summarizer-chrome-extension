@@ -93,6 +93,11 @@ chrome.runtime.onInstalled.addListener(() => {
       contexts: ['selection'],
     });
     chrome.contextMenus.create({
+      id: 'cs-fast-chat',
+      title: '💬 Fast Chat',
+      contexts: ['selection'],
+    });
+    chrome.contextMenus.create({
       id: 'cs-explain-word',
       title: '🔍 Explain in Summary Context',
       contexts: ['selection'],
@@ -108,6 +113,14 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'cs-summarize-selection') {
     chrome.tabs.sendMessage(tab.id, {
       type: 'summarize-selection',
+      term: selectionText,
+    }).catch(() => {});
+    return;
+  }
+
+  if (info.menuItemId === 'cs-fast-chat') {
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'fast-chat-selection',
       term: selectionText,
     }).catch(() => {});
     return;
