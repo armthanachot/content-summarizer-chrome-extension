@@ -159,7 +159,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       request.content,
       request.maxWords,
       request.targetLang,
-      request.model
+      request.model,
+      request.sameLanguageAsContent
     )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
@@ -186,7 +187,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       request.url,
       request.maxWords,
       request.targetLang,
-      request.model
+      request.model,
+      request.sameLanguageAsContent
     )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
@@ -226,7 +228,8 @@ async function summarizeContent(
   content,
   maxWords,
   targetLang,
-  modelPreference
+  modelPreference,
+  sameLanguageAsContent
 ) {
   let systemPrompt = `You are an expert content analyst and summarizer. Follow this process:
 
@@ -249,6 +252,9 @@ Your summary MUST:
 
   if (targetLang) {
     systemPrompt += `\n- Write the entire summary in ${targetLang}.`;
+  } else if (sameLanguageAsContent) {
+    systemPrompt +=
+      '\n- Write the entire summary in the same language as the source content (match the dominant language of the input).';
   }
 
   const client = await initializeAI(provider, apiKey, modelPreference);
@@ -284,7 +290,8 @@ async function fetchAndSummarize(
   url,
   maxWords,
   targetLang,
-  modelPreference
+  modelPreference,
+  sameLanguageAsContent
 ) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -323,7 +330,8 @@ async function fetchAndSummarize(
     text,
     maxWords,
     targetLang,
-    modelPreference
+    modelPreference,
+    sameLanguageAsContent
   );
 }
 

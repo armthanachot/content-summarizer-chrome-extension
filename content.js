@@ -2605,6 +2605,8 @@
       if (selectedLang !== 'auto') {
         const lang = LANGUAGES.find(l => l.code === selectedLang);
         if (lang) messagePayload.targetLang = lang.name;
+      } else {
+        messagePayload.sameLanguageAsContent = true;
       }
 
       responseCache = {};
