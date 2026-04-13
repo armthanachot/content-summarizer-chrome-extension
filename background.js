@@ -16,17 +16,30 @@ const PROVIDER_CONFIGS = {
       chat: 'gpt-4o-mini',
     },
   },
+  // gemini: {
+  //   label: 'Gemini',
+  //   models: {
+  //     default: 'gemini-3-flash-preview',
+  //     supported: ['gemini-3-flash-preview'],
+  //   },
+  //   taskDefaults: {
+  //     summarize: 'gemini-3-flash-preview',
+  //     translate: 'gemini-3-flash-preview',
+  //     explain: 'gemini-3-flash-preview',
+  //     chat: 'gemini-3-flash-preview',
+  //   },
+  // },
   gemini: {
     label: 'Gemini',
     models: {
-      default: 'gemini-3-flash-preview',
-      supported: ['gemini-3-flash-preview'],
+      default: 'gemini-2.5-flash',
+      supported: ['gemini-2.5-flash'],
     },
     taskDefaults: {
-      summarize: 'gemini-3-flash-preview',
-      translate: 'gemini-3-flash-preview',
-      explain: 'gemini-3-flash-preview',
-      chat: 'gemini-3-flash-preview',
+      summarize: 'gemini-2.5-flash',
+      translate: 'gemini-2.5-flash',
+      explain: 'gemini-2.5-flash',
+      chat: 'gemini-2.5-flash',
     },
   },
 };
@@ -403,13 +416,9 @@ async function callOpenAIChat(apiKey, model, summaryContext, history) {
 
 async function callGeminiChat(apiKey, model, summaryContext, history) {
   const systemBlock = `${CHAT_SYSTEM_INSTRUCTION}\n\n---\nSummary (markdown):\n${summaryContext}\n---`;
-  const contents = history.map((m) => ({
-    role: m.role === 'user' ? 'USER' : 'MODEL',
-    parts: [{ text: m.content || '' }],
-  }));
-
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    // `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent`,
     {
       method: 'POST',
       headers: {
@@ -417,10 +426,16 @@ async function callGeminiChat(apiKey, model, summaryContext, history) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemBlock }],
-        },
-        contents,
+        contents: [
+          {
+            role: 'MODEL',
+            parts: [{ text: systemBlock }],
+          },
+          ...history.map((m) => ({
+            role: m.role === 'user' ? 'USER' : 'MODEL',
+            parts: [{ text: m.content || '' }],
+          })),
+        ],
         generationConfig: {
           temperature: 0.4,
           maxOutputTokens: 4096,
@@ -491,8 +506,8 @@ async function callOpenAI(apiKey, model, systemPrompt, userPrompt) {
 
 async function callGemini(apiKey, model, systemPrompt, userPrompt) {
   const response = await fetch(
-    // `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent`,
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent`,
+    // `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: 'POST',
       headers: {
