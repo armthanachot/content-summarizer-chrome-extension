@@ -1,3 +1,5 @@
+importScripts('expert-advisors.js');
+
 // ===================== AI Provider Setup =====================
 
 const DEFAULT_PROVIDER = 'openai';
@@ -14,6 +16,7 @@ const PROVIDER_CONFIGS = {
       translate: 'gpt-4o-mini',
       explain: 'gpt-4o-mini',
       chat: 'gpt-4o-mini',
+      advisors: 'gpt-4o-mini',
     },
   },
   // gemini: {
@@ -40,6 +43,7 @@ const PROVIDER_CONFIGS = {
       translate: 'gemini-2.5-flash',
       explain: 'gemini-2.5-flash',
       chat: 'gemini-2.5-flash',
+      advisors: 'gemini-2.5-flash',
     },
   },
 };
@@ -227,6 +231,19 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       request.apiKey,
       request.summaryContext,
       request.messages,
+      request.model,
+      request.advisorPersona
+    )
+      .then((result) => sendResponse({ success: true, data: result }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  if (request.type === 'suggest-expert-advisors') {
+    suggestExpertAdvisors(
+      request.provider,
+      request.apiKey,
+      request.summaryContext,
       request.model
     )
       .then((result) => sendResponse({ success: true, data: result }))
@@ -348,14 +365,40 @@ async function fetchAndSummarize(
   );
 }
 
-const CHAT_SYSTEM_INSTRUCTION = `You are a helpful assistant. The user is discussing a summary they generated. Use the provided summary as your primary context. Answer questions based on that summary; if something is not covered in the summary, say so clearly. Be concise and use markdown when it helps (headings, bullets, bold). Respond in the same language the user writes in unless they ask otherwise.`;
+let CHAT_SYSTEM_INSTRUCTION = `You are a helpful assistant. The user is discussing a summary they generated. Use the provided summary as your primary context. Answer questions based on that summary; if something is not covered in the summary, say so clearly. Be concise and use markdown when it helps (headings, bullets, bold). Respond in the same language the user writes in unless they ask otherwise. Stay accurate and grounded in the summary—do not invent credentials or affiliations.`;
+
+function buildChatSystemBlock(summaryContext, advisorPersona) {
+  const instructionRaw =
+    advisorPersona && typeof advisorPersona.instruction === 'string'
+      ? advisorPersona.instruction.trim()
+      : '';
+  let systemPreamble = CHAT_SYSTEM_INSTRUCTION;
+  if (instructionRaw) {
+    systemPreamble += `\n\nact as ${instructionRaw}`;
+  }
+  return `${systemPreamble}\n\n---\nSummary (markdown):\n${summaryContext}\n---`;
+}
+
+async function suggestExpertAdvisors(provider, apiKey, summaryContext, modelPreference) {
+  const trimmed = (summaryContext || '').trim();
+  if (!trimmed) {
+    throw new Error('No summary context available for expert suggestions.');
+  }
+  const client = await initializeAI(provider, apiKey, modelPreference);
+  const model = resolveModelSelection(client.provider, 'advisors', client.modelPreference);
+  if (client.provider === 'gemini') {
+    return self.ExpertAdvisors.fetchGemini(client.apiKey, model, trimmed);
+  }
+  return self.ExpertAdvisors.fetchOpenAI(client.apiKey, model, trimmed);
+}
 
 async function chatAboutSummary(
   provider,
   apiKey,
   summaryContext,
   messages,
-  modelPreference
+  modelPreference,
+  advisorPersona
 ) {
   const trimmedSummary = (summaryContext || '').trim();
   if (!trimmedSummary) {
@@ -374,13 +417,13 @@ async function chatAboutSummary(
   const model = resolveModelSelection(client.provider, 'chat', client.modelPreference);
 
   if (client.provider === 'gemini') {
-    return callGeminiChat(client.apiKey, model, trimmedSummary, history);
+    return callGeminiChat(client.apiKey, model, trimmedSummary, history, advisorPersona);
   }
-  return callOpenAIChat(client.apiKey, model, trimmedSummary, history);
+  return callOpenAIChat(client.apiKey, model, trimmedSummary, history, advisorPersona);
 }
 
-async function callOpenAIChat(apiKey, model, summaryContext, history) {
-  const systemContent = `${CHAT_SYSTEM_INSTRUCTION}\n\n---\nSummary (markdown):\n${summaryContext}\n---`;
+async function callOpenAIChat(apiKey, model, summaryContext, history, advisorPersona) {
+  const systemContent = buildChatSystemBlock(summaryContext, advisorPersona);
   const openAiMessages = [
     { role: 'system', content: systemContent },
     ...history.map((m) => ({
@@ -414,8 +457,8 @@ async function callOpenAIChat(apiKey, model, summaryContext, history) {
   return data.choices?.[0]?.message?.content || '';
 }
 
-async function callGeminiChat(apiKey, model, summaryContext, history) {
-  const systemBlock = `${CHAT_SYSTEM_INSTRUCTION}\n\n---\nSummary (markdown):\n${summaryContext}\n---`;
+async function callGeminiChat(apiKey, model, summaryContext, history, advisorPersona) {
+  const systemBlock = buildChatSystemBlock(summaryContext, advisorPersona);
   const response = await fetch(
     // `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent`,

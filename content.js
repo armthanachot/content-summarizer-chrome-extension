@@ -1322,7 +1322,7 @@
       box-shadow: 0 24px 70px rgba(15, 23, 42, 0.55), 0 0 0 1px rgba(30, 58, 138, 0.35);
       width: 440px;
       height: 520px;
-      min-width: 320px;
+      min-width: 280px;
       min-height: 200px;
       display: none;
       flex-direction: column;
@@ -1399,6 +1399,127 @@
       color: #fff;
     }
 
+    .summary-chat-advisors-wrap {
+      flex-shrink: 0;
+    }
+
+    .summary-chat-expert-btn {
+      width: 32px;
+      height: 28px;
+      padding: 2px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #e8eef7;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+    }
+
+    .summary-chat-expert-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.22);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .summary-chat-expert-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .summary-chat-expert-btn-icon {
+      width: 18px;
+      height: 18px;
+      display: block;
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+
+    .summary-chat-advisors-panel {
+      flex-shrink: 0;
+      align-self: stretch;
+      width: calc(100% - 20px);
+      max-width: calc(100% - 20px);
+      margin: 0 10px 10px 10px;
+      box-sizing: border-box;
+      max-height: min(280px, 45vh);
+      padding: 10px 12px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .summary-chat-advisors-panel[hidden] {
+      display: none !important;
+    }
+
+    .summary-chat-advisors-loading {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .summary-chat-advisors-error {
+      font-size: 12px;
+      color: #fca5a5;
+      line-height: 1.35;
+    }
+
+    .summary-chat-advisors-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
+    }
+
+    .summary-chat-advisors-select {
+      width: 100%;
+      font-size: 12px;
+      line-height: 1.35;
+      color: #e2e8f0;
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-family: inherit;
+    }
+
+    .summary-chat-advisors-select option {
+      padding: 6px;
+    }
+
+    .summary-chat-advisors-regenerate {
+      margin-top: 4px;
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      background: #334155;
+      color: #f1f5f9;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .summary-chat-advisors-regenerate:hover:not(:disabled) {
+      background: #475569;
+    }
+
+    .summary-chat-advisors-regenerate:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     .summary-chat-close {
       width: 28px;
       height: 28px;
@@ -1428,6 +1549,7 @@
       flex-direction: column;
       gap: 12px;
       min-height: 0;
+      min-width: 0;
       background: #0f172a;
     }
 
@@ -1859,6 +1981,14 @@
   let summaryChatMessages = [];
   let summaryChatLoading = false;
   let summaryChatLastError = '';
+  /** @type {{ title: string, bio: string, instruction: string }[]} */
+  let summaryChatAdvisors = [];
+  /** @type {{ title: string, bio: string, instruction: string } | null} */
+  let summaryChatAdvisorPersona = null;
+  let summaryChatAdvisorsLoading = false;
+  let summaryChatAdvisorsPanelOpen = false;
+  let summaryChatExpertOutsideCloseBound = false;
+  let summaryChatAdvisorsSelectProgrammatic = false;
   /** Last chat window geometry while main modal is open (cleared when main modal closes). */
   let summaryChatRect = null;
   /** True when chat was opened from context menu "Fast Chat" without the main modal. */
@@ -1872,6 +2002,7 @@
     summaryChatLoading = false;
     summaryChatLastError = '';
     summaryChatRect = null;
+    clearSummaryChatExpertAdvisorsUi();
     minimizedPanels.delete('chat');
     if (minimizedDock) updateMinimizedDock();
     if (summaryChatPopover) {
@@ -1880,6 +2011,201 @@
       const msgs = summaryChatPopover.querySelector('.summary-chat-messages');
       if (input) input.value = '';
       if (msgs) msgs.innerHTML = '';
+    }
+  }
+
+  function clearSummaryChatExpertAdvisorsUi() {
+    summaryChatAdvisors = [];
+    summaryChatAdvisorPersona = null;
+    summaryChatAdvisorsLoading = false;
+    summaryChatAdvisorsPanelOpen = false;
+    if (!summaryChatPopover) return;
+    const panel = summaryChatPopover.querySelector('.summary-chat-advisors-panel');
+    const loadingEl = summaryChatPopover.querySelector('.summary-chat-advisors-loading');
+    const errEl = summaryChatPopover.querySelector('.summary-chat-advisors-error');
+    const bodyEl = summaryChatPopover.querySelector('.summary-chat-advisors-body');
+    const select = summaryChatPopover.querySelector('.summary-chat-advisors-select');
+    const btn = summaryChatPopover.querySelector('.summary-chat-expert-btn');
+    if (panel) panel.hidden = true;
+    if (loadingEl) {
+      loadingEl.hidden = true;
+      loadingEl.textContent = 'Analyzing…';
+    }
+    if (errEl) {
+      errEl.hidden = true;
+      errEl.textContent = '';
+    }
+    if (bodyEl) bodyEl.hidden = true;
+    if (select) select.innerHTML = '';
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+    updateSummaryChatExpertButtonState();
+  }
+
+  function updateSummaryChatExpertButtonState() {
+    if (!summaryChatPopover) return;
+    const btn = summaryChatPopover.querySelector('.summary-chat-expert-btn');
+    if (!btn) return;
+    const ok = !!(rawResponse || '').trim() && !!getActiveApiKey();
+    btn.disabled = !ok || summaryChatAdvisorsLoading;
+  }
+
+  function syncSummaryChatAdvisorPersonaFromSelect() {
+    const select = summaryChatPopover && summaryChatPopover.querySelector('.summary-chat-advisors-select');
+    if (!select || summaryChatAdvisors.length === 0) {
+      summaryChatAdvisorPersona = null;
+      return;
+    }
+    const idx = Number(select.value);
+    const row = summaryChatAdvisors[idx];
+    summaryChatAdvisorPersona = row
+      ? {
+          title: row.title,
+          bio: row.bio,
+          instruction: row.instruction || '',
+        }
+      : null;
+  }
+
+  /** Clear chat thread so the next request uses only the current advisor instruction (matches background systemContent / systemBlock). */
+  function resetSummaryChatThreadForPersonaChange() {
+    summaryChatMessages = [];
+    summaryChatLastError = '';
+    summaryChatLoading = false;
+    if (!summaryChatPopover) return;
+    const input = summaryChatPopover.querySelector('.summary-chat-input');
+    if (input) input.value = '';
+    setSummaryChatInputDisabled(false);
+    renderSummaryChatMessages();
+  }
+
+  function setSummaryChatAdvisorsPanelOpen(open) {
+    summaryChatAdvisorsPanelOpen = open;
+    const btn = summaryChatPopover && summaryChatPopover.querySelector('.summary-chat-expert-btn');
+    const panel = summaryChatPopover && summaryChatPopover.querySelector('.summary-chat-advisors-panel');
+    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (panel) panel.hidden = !open;
+  }
+
+  function bindSummaryChatExpertOutsideClose() {
+    if (summaryChatExpertOutsideCloseBound) return;
+    summaryChatExpertOutsideCloseBound = true;
+    window.addEventListener(
+      'mousedown',
+      (e) => {
+        if (!summaryChatAdvisorsPanelOpen || !summaryChatPopover || !summaryChatPopover.classList.contains('visible')) {
+          return;
+        }
+        const wrap = summaryChatPopover.querySelector('.summary-chat-advisors-wrap');
+        const panel = summaryChatPopover.querySelector('.summary-chat-advisors-panel');
+        if (!wrap && !panel) return;
+        const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
+        const inside = path.some(
+          (n) =>
+            n === wrap ||
+            n === panel ||
+            (wrap && n && wrap.contains(n)) ||
+            (panel && n && panel.contains(n))
+        );
+        if (inside) return;
+        setSummaryChatAdvisorsPanelOpen(false);
+      },
+      true
+    );
+  }
+
+  async function fetchSummaryChatExpertAdvisors() {
+    if (!summaryChatPopover || summaryChatAdvisorsLoading) return;
+    const context = (rawResponse || '').trim();
+    if (!context) return;
+    if (!getActiveApiKey()) {
+      const errEl = summaryChatPopover.querySelector('.summary-chat-advisors-error');
+      if (errEl) {
+        errEl.textContent = 'Add an API key in settings first.';
+        errEl.hidden = false;
+      }
+      return;
+    }
+
+    summaryChatAdvisorsLoading = true;
+    updateSummaryChatExpertButtonState();
+
+    const loadingEl = summaryChatPopover.querySelector('.summary-chat-advisors-loading');
+    const errEl = summaryChatPopover.querySelector('.summary-chat-advisors-error');
+    const bodyEl = summaryChatPopover.querySelector('.summary-chat-advisors-body');
+    const select = summaryChatPopover.querySelector('.summary-chat-advisors-select');
+    const regen = summaryChatPopover.querySelector('.summary-chat-advisors-regenerate');
+    if (regen) regen.disabled = true;
+
+    if (loadingEl) loadingEl.hidden = false;
+    if (errEl) {
+      errEl.hidden = true;
+      errEl.textContent = '';
+    }
+    if (bodyEl) bodyEl.hidden = true;
+    if (select) select.innerHTML = '';
+
+    try {
+      if (!isContextValid()) throw new Error('Extension was reloaded. Please refresh the page.');
+      const experts = await new Promise((resolve, reject) => {
+        try {
+          chrome.runtime.sendMessage(
+            {
+              type: 'suggest-expert-advisors',
+              provider: currentProvider,
+              apiKey: getActiveApiKey(),
+              summaryContext: context,
+            },
+            (resp) => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
+              }
+              if (!resp) {
+                reject(new Error('No response from background script.'));
+                return;
+              }
+              if (resp.success) resolve(resp.data);
+              else reject(new Error(resp.error));
+            }
+          );
+        } catch (e) {
+          reject(e);
+        }
+      });
+
+      summaryChatAdvisors = Array.isArray(experts) ? experts : [];
+      if (select) {
+        summaryChatAdvisorsSelectProgrammatic = true;
+        select.innerHTML = '';
+        summaryChatAdvisors.forEach((ex, i) => {
+          const opt = document.createElement('option');
+          opt.value = String(i);
+          opt.textContent = `${ex.title} — ${ex.bio}`;
+          opt.title = `${ex.title}: ${ex.bio}\n${ex.instruction || ''}`;
+          select.appendChild(opt);
+        });
+        select.selectedIndex = 0;
+        syncSummaryChatAdvisorPersonaFromSelect();
+        resetSummaryChatThreadForPersonaChange();
+        setTimeout(() => {
+          summaryChatAdvisorsSelectProgrammatic = false;
+        }, 0);
+      } else {
+        syncSummaryChatAdvisorPersonaFromSelect();
+        resetSummaryChatThreadForPersonaChange();
+      }
+      if (loadingEl) loadingEl.hidden = true;
+      if (bodyEl) bodyEl.hidden = false;
+    } catch (err) {
+      if (loadingEl) loadingEl.hidden = true;
+      if (errEl) {
+        errEl.textContent = err.message || String(err);
+        errEl.hidden = false;
+      }
+    } finally {
+      summaryChatAdvisorsLoading = false;
+      if (regen) regen.disabled = false;
+      updateSummaryChatExpertButtonState();
     }
   }
 
@@ -2140,6 +2466,7 @@
     }
     positionSummaryChatPopover();
     summaryChatPopover.classList.add('visible');
+    updateSummaryChatExpertButtonState();
     renderSummaryChatMessages();
     setTimeout(() => summaryChatPopover.querySelector('.summary-chat-input')?.focus(), 50);
   }
@@ -2248,6 +2575,7 @@
               apiKey: getActiveApiKey(),
               summaryContext: context,
               messages: summaryChatMessages,
+              advisorPersona: summaryChatAdvisorPersona,
             },
             (resp) => {
               if (chrome.runtime.lastError) {
@@ -2500,9 +2828,28 @@
       <div class="summary-chat-header">
         <span class="summary-chat-title">Chat about summary</span>
         <div class="summary-chat-header-actions">
+          <div class="summary-chat-advisors-wrap">
+            <button type="button" class="summary-chat-expert-btn" title="Suggest expert advisors for this topic" aria-haspopup="listbox" aria-expanded="false" disabled>
+              <svg class="summary-chat-expert-btn-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.75"/>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
           <button type="button" class="summary-chat-copy-json" title="Copy chat as JSON">Copy JSON</button>
           <button type="button" class="summary-chat-minimize" title="Minimize">−</button>
           <button type="button" class="summary-chat-close" title="Close">✕</button>
+        </div>
+      </div>
+      <div class="summary-chat-advisors-panel" hidden>
+        <div class="summary-chat-advisors-loading" hidden>Analyzing…</div>
+        <div class="summary-chat-advisors-error" hidden></div>
+        <div class="summary-chat-advisors-body" hidden>
+          <label class="summary-chat-advisors-label" for="summary-chat-advisors-select">Advisory perspectives</label>
+          <select id="summary-chat-advisors-select" class="summary-chat-advisors-select" size="3" aria-label="Pick an expert perspective"></select>
+          <button type="button" class="summary-chat-advisors-regenerate">Re-generate</button>
         </div>
       </div>
       <div class="summary-chat-messages"></div>
@@ -2512,6 +2859,57 @@
       </div>
     `;
     modalShadow.appendChild(summaryChatPopover);
+
+    bindSummaryChatExpertOutsideClose();
+
+    const summaryChatAdvisorsPanelEl = summaryChatPopover.querySelector('.summary-chat-advisors-panel');
+    if (summaryChatAdvisorsPanelEl) {
+      summaryChatAdvisorsPanelEl.addEventListener('mousedown', (e) => e.stopPropagation());
+    }
+
+    const summaryChatExpertBtn = summaryChatPopover.querySelector('.summary-chat-expert-btn');
+    const summaryChatAdvisorsSelect = summaryChatPopover.querySelector('.summary-chat-advisors-select');
+    const summaryChatAdvisorsRegen = summaryChatPopover.querySelector('.summary-chat-advisors-regenerate');
+
+    if (summaryChatExpertBtn) {
+      summaryChatExpertBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (summaryChatExpertBtn.disabled || summaryChatAdvisorsLoading) return;
+        const opening = !summaryChatAdvisorsPanelOpen;
+        if (opening) {
+          setSummaryChatAdvisorsPanelOpen(true);
+          if (summaryChatAdvisors.length === 0) {
+            fetchSummaryChatExpertAdvisors();
+          } else {
+            const loadingEl = summaryChatPopover.querySelector('.summary-chat-advisors-loading');
+            const errEl = summaryChatPopover.querySelector('.summary-chat-advisors-error');
+            const bodyEl = summaryChatPopover.querySelector('.summary-chat-advisors-body');
+            if (loadingEl) loadingEl.hidden = true;
+            if (errEl) errEl.hidden = true;
+            if (bodyEl) bodyEl.hidden = false;
+          }
+        } else {
+          setSummaryChatAdvisorsPanelOpen(false);
+        }
+      });
+    }
+
+    if (summaryChatAdvisorsSelect) {
+      summaryChatAdvisorsSelect.addEventListener('change', () => {
+        syncSummaryChatAdvisorPersonaFromSelect();
+        if (summaryChatAdvisorsSelectProgrammatic) return;
+        resetSummaryChatThreadForPersonaChange();
+        setSummaryChatAdvisorsPanelOpen(false);
+      });
+    }
+
+    if (summaryChatAdvisorsRegen) {
+      summaryChatAdvisorsRegen.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (summaryChatAdvisorsLoading) return;
+        fetchSummaryChatExpertAdvisors();
+      });
+    }
 
     summaryChatPopover.querySelector('.summary-chat-minimize').addEventListener('click', () => {
       minimizeChatPanel();
@@ -3043,6 +3441,7 @@
             reject(e);
           }
         });
+        clearSummaryChatExpertAdvisorsUi();
         rawResponse = result;
         originalResponse = result;
         responseCache['original'] = result;
@@ -3125,6 +3524,7 @@
         closeLangDropdown();
         closeDropdown();
       }
+      updateSummaryChatExpertButtonState();
     }
 
     translateBtn.addEventListener('click', (e) => {
@@ -3147,6 +3547,7 @@
           closeDropdown();
 
           if (responseCache[lang.code]) {
+            clearSummaryChatExpertAdvisorsUi();
             rawResponse = responseCache[lang.code];
             responseContent.innerHTML = parseMarkdown(rawResponse);
             return;
@@ -3192,6 +3593,7 @@
                 reject(e);
               }
             });
+            clearSummaryChatExpertAdvisorsUi();
             rawResponse = result;
             responseCache[lang.code] = result;
             responseContent.innerHTML = parseMarkdown(result);
