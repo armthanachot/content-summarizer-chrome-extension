@@ -366,10 +366,15 @@ async function fetchAndSummarize(
 }
 
 let CHAT_SYSTEM_INSTRUCTION = `You are a helpful assistant. The user is discussing a summary they generated. Use the provided summary as your primary context. Answer questions based on that summary; if something is not covered in the summary, say so clearly. Be concise and use markdown when it helps (headings, bullets, bold). Respond in the same language the user writes in unless they ask otherwise. Stay accurate and grounded in the summary—do not invent credentials or affiliations.`;
+const DEFAULT_ADVISOR_VALUE = 'CHAT_SYSTEM_INSTRUCTION';
 
 function buildChatSystemBlock(summaryContext, advisorPersona) {
+  const isDefaultAdvisor =
+    advisorPersona &&
+    typeof advisorPersona.value === 'string' &&
+    advisorPersona.value === DEFAULT_ADVISOR_VALUE;
   const instructionRaw =
-    advisorPersona && typeof advisorPersona.instruction === 'string'
+    !isDefaultAdvisor && advisorPersona && typeof advisorPersona.instruction === 'string'
       ? advisorPersona.instruction.trim()
       : '';
   let systemPreamble = CHAT_SYSTEM_INSTRUCTION;
@@ -386,10 +391,19 @@ async function suggestExpertAdvisors(provider, apiKey, summaryContext, modelPref
   }
   const client = await initializeAI(provider, apiKey, modelPreference);
   const model = resolveModelSelection(client.provider, 'advisors', client.modelPreference);
-  if (client.provider === 'gemini') {
-    return self.ExpertAdvisors.fetchGemini(client.apiKey, model, trimmed);
-  }
-  return self.ExpertAdvisors.fetchOpenAI(client.apiKey, model, trimmed);
+  const experts =
+    client.provider === 'gemini'
+      ? await self.ExpertAdvisors.fetchGemini(client.apiKey, model, trimmed)
+      : await self.ExpertAdvisors.fetchOpenAI(client.apiKey, model, trimmed);
+  return [
+    {
+      title: 'default',
+      bio: 'default instruction',
+      instruction: CHAT_SYSTEM_INSTRUCTION,
+      value: DEFAULT_ADVISOR_VALUE,
+    },
+    ...experts,
+  ];
 }
 
 async function chatAboutSummary(

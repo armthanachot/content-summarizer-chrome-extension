@@ -1481,20 +1481,53 @@
       margin-bottom: 2px;
     }
 
-    .summary-chat-advisors-select {
+    .summary-chat-advisors-list {
       width: 100%;
-      font-size: 12px;
-      line-height: 1.35;
-      color: #e2e8f0;
       background: #0f172a;
       border: 1px solid #475569;
       border-radius: 8px;
-      padding: 6px 8px;
-      font-family: inherit;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
-    .summary-chat-advisors-select option {
-      padding: 6px;
+    .summary-chat-advisor-item {
+      width: 100%;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 7px 8px;
+      text-align: left;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .summary-chat-advisor-item:hover {
+      background: #273449;
+    }
+
+    .summary-chat-advisor-item.active {
+      border-color: #38bdf8;
+      background: #1f3b52;
+    }
+
+    .summary-chat-advisor-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #f8fafc;
+      line-height: 1.25;
+    }
+
+    .summary-chat-advisor-subtitle {
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.3;
     }
 
     .summary-chat-advisors-regenerate {
@@ -1981,14 +2014,15 @@
   let summaryChatMessages = [];
   let summaryChatLoading = false;
   let summaryChatLastError = '';
-  /** @type {{ title: string, bio: string, instruction: string }[]} */
+  const DEFAULT_ADVISOR_VALUE = 'CHAT_SYSTEM_INSTRUCTION';
+  /** @type {{ title: string, bio: string, instruction: string, value?: string }[]} */
   let summaryChatAdvisors = [];
-  /** @type {{ title: string, bio: string, instruction: string } | null} */
+  /** @type {{ title: string, bio: string, instruction: string, value?: string } | null} */
   let summaryChatAdvisorPersona = null;
+  let summaryChatAdvisorSelectedValue = '';
   let summaryChatAdvisorsLoading = false;
   let summaryChatAdvisorsPanelOpen = false;
   let summaryChatExpertOutsideCloseBound = false;
-  let summaryChatAdvisorsSelectProgrammatic = false;
   /** Last chat window geometry while main modal is open (cleared when main modal closes). */
   let summaryChatRect = null;
   /** True when chat was opened from context menu "Fast Chat" without the main modal. */
@@ -2017,6 +2051,7 @@
   function clearSummaryChatExpertAdvisorsUi() {
     summaryChatAdvisors = [];
     summaryChatAdvisorPersona = null;
+    summaryChatAdvisorSelectedValue = '';
     summaryChatAdvisorsLoading = false;
     summaryChatAdvisorsPanelOpen = false;
     if (!summaryChatPopover) return;
@@ -2024,7 +2059,7 @@
     const loadingEl = summaryChatPopover.querySelector('.summary-chat-advisors-loading');
     const errEl = summaryChatPopover.querySelector('.summary-chat-advisors-error');
     const bodyEl = summaryChatPopover.querySelector('.summary-chat-advisors-body');
-    const select = summaryChatPopover.querySelector('.summary-chat-advisors-select');
+    const list = summaryChatPopover.querySelector('.summary-chat-advisors-list');
     const btn = summaryChatPopover.querySelector('.summary-chat-expert-btn');
     if (panel) panel.hidden = true;
     if (loadingEl) {
@@ -2036,7 +2071,7 @@
       errEl.textContent = '';
     }
     if (bodyEl) bodyEl.hidden = true;
-    if (select) select.innerHTML = '';
+    if (list) list.innerHTML = '';
     if (btn) btn.setAttribute('aria-expanded', 'false');
     updateSummaryChatExpertButtonState();
   }
@@ -2049,21 +2084,27 @@
     btn.disabled = !ok || summaryChatAdvisorsLoading;
   }
 
-  function syncSummaryChatAdvisorPersonaFromSelect() {
-    const select = summaryChatPopover && summaryChatPopover.querySelector('.summary-chat-advisors-select');
-    if (!select || summaryChatAdvisors.length === 0) {
-      summaryChatAdvisorPersona = null;
-      return;
-    }
-    const idx = Number(select.value);
-    const row = summaryChatAdvisors[idx];
+  function syncSummaryChatAdvisorPersonaFromValue(value, resetThread) {
+    const safeValue = typeof value === 'string' ? value : '';
+    const prevValue = summaryChatAdvisorSelectedValue;
+    const row = summaryChatAdvisors.find((item) => item && item.value === safeValue);
+    summaryChatAdvisorSelectedValue = row ? safeValue : '';
     summaryChatAdvisorPersona = row
       ? {
           title: row.title,
           bio: row.bio,
-          instruction: row.instruction || '',
+          instruction: row.value === DEFAULT_ADVISOR_VALUE ? '' : row.instruction || '',
+          value: row.value || '',
         }
       : null;
+    if (summaryChatPopover) {
+      summaryChatPopover.querySelectorAll('.summary-chat-advisor-item').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.value === summaryChatAdvisorSelectedValue);
+      });
+    }
+    if (resetThread && prevValue !== summaryChatAdvisorSelectedValue) {
+      resetSummaryChatThreadForPersonaChange();
+    }
   }
 
   /** Clear chat thread so the next request uses only the current advisor instruction (matches background systemContent / systemBlock). */
@@ -2132,7 +2173,7 @@
     const loadingEl = summaryChatPopover.querySelector('.summary-chat-advisors-loading');
     const errEl = summaryChatPopover.querySelector('.summary-chat-advisors-error');
     const bodyEl = summaryChatPopover.querySelector('.summary-chat-advisors-body');
-    const select = summaryChatPopover.querySelector('.summary-chat-advisors-select');
+    const list = summaryChatPopover.querySelector('.summary-chat-advisors-list');
     const regen = summaryChatPopover.querySelector('.summary-chat-advisors-regenerate');
     if (regen) regen.disabled = true;
 
@@ -2142,7 +2183,7 @@
       errEl.textContent = '';
     }
     if (bodyEl) bodyEl.hidden = true;
-    if (select) select.innerHTML = '';
+    if (list) list.innerHTML = '';
 
     try {
       if (!isContextValid()) throw new Error('Extension was reloaded. Please refresh the page.');
@@ -2173,27 +2214,37 @@
         }
       });
 
-      summaryChatAdvisors = Array.isArray(experts) ? experts : [];
-      if (select) {
-        summaryChatAdvisorsSelectProgrammatic = true;
-        select.innerHTML = '';
-        summaryChatAdvisors.forEach((ex, i) => {
-          const opt = document.createElement('option');
-          opt.value = String(i);
-          opt.textContent = `${ex.title} — ${ex.bio}`;
-          opt.title = `${ex.title}: ${ex.bio}\n${ex.instruction || ''}`;
-          select.appendChild(opt);
+      const rawAdvisors = Array.isArray(experts) ? experts : [];
+      summaryChatAdvisors = rawAdvisors.map((ex, i) => ({
+        title: ex?.title || '',
+        bio: ex?.bio || '',
+        instruction: ex?.instruction || '',
+        value:
+          typeof ex?.value === 'string' && ex.value.trim()
+            ? ex.value.trim()
+            : `advisor_${i}`,
+      }));
+      if (list) {
+        list.innerHTML = '';
+        summaryChatAdvisors.forEach((ex) => {
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.className = 'summary-chat-advisor-item';
+          item.dataset.value = ex.value || '';
+          item.title = ex.instruction || '';
+          const title = document.createElement('span');
+          title.className = 'summary-chat-advisor-title';
+          title.textContent = ex.title || 'Untitled advisor';
+          const subtitle = document.createElement('span');
+          subtitle.className = 'summary-chat-advisor-subtitle';
+          subtitle.textContent = ex.bio || '';
+          item.appendChild(title);
+          item.appendChild(subtitle);
+          list.appendChild(item);
         });
-        select.selectedIndex = 0;
-        syncSummaryChatAdvisorPersonaFromSelect();
-        resetSummaryChatThreadForPersonaChange();
-        setTimeout(() => {
-          summaryChatAdvisorsSelectProgrammatic = false;
-        }, 0);
-      } else {
-        syncSummaryChatAdvisorPersonaFromSelect();
-        resetSummaryChatThreadForPersonaChange();
       }
+      const firstValue = summaryChatAdvisors[0] ? summaryChatAdvisors[0].value || '' : '';
+      syncSummaryChatAdvisorPersonaFromValue(firstValue, true);
       if (loadingEl) loadingEl.hidden = true;
       if (bodyEl) bodyEl.hidden = false;
     } catch (err) {
@@ -2847,8 +2898,8 @@
         <div class="summary-chat-advisors-loading" hidden>Analyzing…</div>
         <div class="summary-chat-advisors-error" hidden></div>
         <div class="summary-chat-advisors-body" hidden>
-          <label class="summary-chat-advisors-label" for="summary-chat-advisors-select">Advisory perspectives</label>
-          <select id="summary-chat-advisors-select" class="summary-chat-advisors-select" size="3" aria-label="Pick an expert perspective"></select>
+          <label class="summary-chat-advisors-label">Advisory perspectives</label>
+          <div class="summary-chat-advisors-list" role="listbox" aria-label="Pick an expert perspective"></div>
           <button type="button" class="summary-chat-advisors-regenerate">Re-generate</button>
         </div>
       </div>
@@ -2868,7 +2919,7 @@
     }
 
     const summaryChatExpertBtn = summaryChatPopover.querySelector('.summary-chat-expert-btn');
-    const summaryChatAdvisorsSelect = summaryChatPopover.querySelector('.summary-chat-advisors-select');
+    const summaryChatAdvisorsList = summaryChatPopover.querySelector('.summary-chat-advisors-list');
     const summaryChatAdvisorsRegen = summaryChatPopover.querySelector('.summary-chat-advisors-regenerate');
 
     if (summaryChatExpertBtn) {
@@ -2894,11 +2945,12 @@
       });
     }
 
-    if (summaryChatAdvisorsSelect) {
-      summaryChatAdvisorsSelect.addEventListener('change', () => {
-        syncSummaryChatAdvisorPersonaFromSelect();
-        if (summaryChatAdvisorsSelectProgrammatic) return;
-        resetSummaryChatThreadForPersonaChange();
+    if (summaryChatAdvisorsList) {
+      summaryChatAdvisorsList.addEventListener('click', (e) => {
+        const target = e.target instanceof Element ? e.target.closest('.summary-chat-advisor-item') : null;
+        if (!target) return;
+        e.stopPropagation();
+        syncSummaryChatAdvisorPersonaFromValue(target.dataset.value || '', true);
         setSummaryChatAdvisorsPanelOpen(false);
       });
     }
