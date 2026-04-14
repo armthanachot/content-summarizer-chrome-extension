@@ -1423,6 +1423,18 @@
       border-color: rgba(255, 255, 255, 0.5);
     }
 
+    .summary-chat-expert-btn.active {
+      background: rgba(251, 146, 60, 0.2);
+      border-color: #fb923c;
+      color: #fdba74;
+    }
+
+    .summary-chat-expert-btn.active:hover:not(:disabled) {
+      background: rgba(251, 146, 60, 0.28);
+      border-color: #f97316;
+      color: #fed7aa;
+    }
+
     .summary-chat-expert-btn:disabled {
       opacity: 0.45;
       cursor: not-allowed;
@@ -1806,10 +1818,12 @@
       flex-direction: column;
       align-items: stretch;
       box-sizing: border-box;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1.5px solid rgba(0, 0, 0, 0.18);
+      background: rgba(15, 23, 42, 0.2);
+      border: 1.5px solid rgba(148, 163, 184, 0.28);
       border-radius: 14px;
-      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.26);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       z-index: 2147483650;
       pointer-events: auto;
       max-height: calc(100vh - 48px);
@@ -1899,6 +1913,47 @@
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
       transition: transform 0.15s, box-shadow 0.15s;
       flex-shrink: 0;
+    }
+
+    .cs-minimized-item {
+      position: relative;
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+    }
+
+    .cs-minimized-item:hover .cs-minimized-btn-close {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+
+    .cs-minimized-btn-close {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 18px;
+      height: 18px;
+      border: none;
+      border-radius: 50%;
+      background: #ef4444;
+      color: #ffffff;
+      font-size: 11px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+      opacity: 0;
+      transform: scale(0.8);
+      pointer-events: none;
+      transition: opacity 0.15s, transform 0.15s, background 0.15s;
+      z-index: 3;
+    }
+
+    .cs-minimized-btn-close:hover {
+      background: #dc2626;
     }
 
     .cs-minimized-btn:hover {
@@ -2074,6 +2129,7 @@
     if (list) list.innerHTML = '';
     if (btn) btn.setAttribute('aria-expanded', 'false');
     updateSummaryChatExpertButtonState();
+    updateSummaryChatExpertButtonActiveState();
   }
 
   function updateSummaryChatExpertButtonState() {
@@ -2082,6 +2138,16 @@
     if (!btn) return;
     const ok = !!(rawResponse || '').trim() && !!getActiveApiKey();
     btn.disabled = !ok || summaryChatAdvisorsLoading;
+  }
+
+  function updateSummaryChatExpertButtonActiveState() {
+    if (!summaryChatPopover) return;
+    const btn = summaryChatPopover.querySelector('.summary-chat-expert-btn');
+    if (!btn) return;
+    const isCustomPersona =
+      !!summaryChatAdvisorPersona &&
+      summaryChatAdvisorPersona.value !== DEFAULT_ADVISOR_VALUE;
+    btn.classList.toggle('active', isCustomPersona);
   }
 
   function syncSummaryChatAdvisorPersonaFromValue(value, resetThread) {
@@ -2105,6 +2171,7 @@
     if (resetThread && prevValue !== summaryChatAdvisorSelectedValue) {
       resetSummaryChatThreadForPersonaChange();
     }
+    updateSummaryChatExpertButtonActiveState();
   }
 
   /** Clear chat thread so the next request uses only the current advisor instruction (matches background systemContent / systemBlock). */
@@ -2290,6 +2357,8 @@
     buttonsWrap.innerHTML = '';
     MINIMIZED_PANEL_ORDER.forEach((key) => {
       if (!minimizedPanels.has(key)) return;
+      const item = document.createElement('div');
+      item.className = 'cs-minimized-item';
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'cs-minimized-btn';
@@ -2314,7 +2383,22 @@
         e.stopPropagation();
         restoreMinimizedPanel(key);
       });
-      buttonsWrap.appendChild(btn);
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'cs-minimized-btn-close';
+      closeBtn.textContent = '✕';
+      closeBtn.title = `Close ${MINIMIZED_PANEL_LABELS[key]}`;
+      closeBtn.setAttribute('aria-label', `Close ${MINIMIZED_PANEL_LABELS[key]}`);
+      closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeMinimizedPanel(key);
+      });
+
+      item.appendChild(btn);
+      item.appendChild(closeBtn);
+      buttonsWrap.appendChild(item);
     });
 
     if (minimizedPanels.size > 0) {
@@ -2405,6 +2489,27 @@
       positionSummaryChatPopover();
       summaryChatPopover.classList.add('visible');
       setTimeout(() => summaryChatPopover.querySelector('.summary-chat-input')?.focus(), 50);
+    }
+  }
+
+  function closeMinimizedPanel(key) {
+    if (key === 'summary') {
+      minimizedPanels.delete('summary');
+      hideModal();
+      updateMinimizedDock();
+      return;
+    }
+    if (key === 'explain') {
+      minimizedPanels.delete('explain');
+      if (wordExplainPopover) wordExplainPopover.classList.remove('visible');
+      updateMinimizedDock();
+      return;
+    }
+    if (key === 'chat') {
+      minimizedPanels.delete('chat');
+      fastChatStandaloneMode = false;
+      if (summaryChatPopover) summaryChatPopover.classList.remove('visible');
+      updateMinimizedDock();
     }
   }
 
