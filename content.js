@@ -1416,6 +1416,7 @@
       align-items: center;
       justify-content: center;
       transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+      position: relative;
     }
 
     .summary-chat-expert-btn:hover:not(:disabled) {
@@ -1424,15 +1425,19 @@
     }
 
     .summary-chat-expert-btn.active {
-      background: rgba(251, 146, 60, 0.2);
-      border-color: #fb923c;
-      color: #fdba74;
+      border-color: rgba(255, 255, 255, 0.52);
     }
 
-    .summary-chat-expert-btn.active:hover:not(:disabled) {
-      background: rgba(251, 146, 60, 0.28);
-      border-color: #f97316;
-      color: #fed7aa;
+    .summary-chat-expert-btn.active::after {
+      content: '';
+      position: absolute;
+      right: -4px;
+      top: -4px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 2px #0f172a, 0 0 10px rgba(34, 197, 94, 0.5);
     }
 
     .summary-chat-expert-btn:disabled {
