@@ -119,11 +119,28 @@ chrome.runtime.onInstalled.addListener(() => {
       title: '🔍 Explain in Summary Context',
       contexts: ['selection'],
     });
+    chrome.contextMenus.create({
+      id: 'cs-content-selecting',
+      title: '📋 content selecting',
+      contexts: ['selection'],
+    });
   });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (!tab?.id || !info.selectionText) return;
+  if (!tab?.id) return;
+
+  if (info.menuItemId === 'cs-content-selecting') {
+    chrome.scripting
+      .executeScript({
+        target: { tabId: tab.id },
+        files: ['content_selected.js'],
+      })
+      .catch(() => {});
+    return;
+  }
+
+  if (!info.selectionText) return;
   const selectionText = info.selectionText.trim();
   if (!selectionText) return;
 
