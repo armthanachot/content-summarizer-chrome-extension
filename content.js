@@ -1375,17 +1375,17 @@
     }
 
     .summary-chat-copy-json {
-      padding: 6px 12px;
+      width: 30px;
+      height: 28px;
       border: 1px solid rgba(255, 255, 255, 0.35);
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.12);
       color: #f1f5f9;
-      font-size: 12px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
-      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      transition: background 0.2s, border-color 0.2s, opacity 0.2s;
     }
 
     .summary-chat-copy-json:hover {
@@ -1397,6 +1397,46 @@
       background: #22c55e;
       border-color: #16a34a;
       color: #fff;
+    }
+
+    .summary-chat-copy-json img {
+      width: 16px;
+      height: 16px;
+      display: block;
+      filter: invert(97%) sepia(2%) saturate(446%) hue-rotate(176deg) brightness(106%) contrast(93%);
+      pointer-events: none;
+    }
+
+    .summary-chat-new-thread {
+      width: 30px;
+      height: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      color: #f1f5f9;
+      transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+    }
+
+    .summary-chat-new-thread:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.22);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .summary-chat-new-thread:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .summary-chat-new-thread img {
+      width: 16px;
+      height: 16px;
+      display: block;
+      filter: invert(97%) sepia(2%) saturate(446%) hue-rotate(176deg) brightness(106%) contrast(93%);
+      pointer-events: none;
     }
 
     .summary-chat-advisors-wrap {
@@ -1698,6 +1738,32 @@
       white-space: pre-wrap;
     }
 
+    .summary-chat-msg-user-text {
+      display: block;
+    }
+
+    .summary-chat-msg-user-images {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+      max-width: 230px;
+    }
+
+    .summary-chat-msg-user-images:only-child {
+      margin-top: 0;
+    }
+
+    .summary-chat-msg-user-images img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      display: block;
+      background: rgba(15, 23, 42, 0.45);
+    }
+
     .summary-chat-msg-error {
       width: 100%;
       background: #450a0a;
@@ -1717,6 +1783,24 @@
       background: #0c1422;
       flex-shrink: 0;
       align-items: flex-end;
+    }
+
+    .summary-chat-input-wrap {
+      flex: 1;
+      min-height: 44px;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      background: #1e293b;
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      padding: 7px 8px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .summary-chat-input-wrap:focus-within {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
     }
 
     .summary-chat-input-media {
@@ -1775,44 +1859,59 @@
     }
 
     .summary-chat-attach {
-      width: 34px;
-      height: 34px;
-      border: 1px solid #334155;
+      width: 28px;
+      height: 28px;
+      border: none;
       border-radius: 8px;
-      background: #1e293b;
+      background: transparent;
       color: #e2e8f0;
-      font-size: 18px;
       line-height: 1;
       cursor: pointer;
       flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      opacity: 0.9;
+      transition: opacity 0.2s, background 0.2s;
     }
 
     .summary-chat-attach:hover:not(:disabled) {
-      border-color: #60a5fa;
-      color: #fff;
+      background: rgba(59, 130, 246, 0.18);
+      opacity: 1;
+    }
+
+    .summary-chat-attach:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .summary-chat-attach img {
+      width: 18px;
+      height: 18px;
+      display: block;
+      pointer-events: none;
+      filter: invert(92%) sepia(10%) saturate(354%) hue-rotate(181deg) brightness(102%) contrast(95%);
     }
 
     .summary-chat-input {
       flex: 1;
       min-height: 44px;
       max-height: 120px;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      padding: 10px 12px;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 4px 6px 2px;
       font-size: 13px;
       font-family: inherit;
       line-height: 1.45;
       resize: vertical;
-      background: #1e293b;
+      background: transparent;
       color: #f1f5f9;
       outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      margin: 0;
     }
 
-    .summary-chat-input:focus {
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
-    }
+    .summary-chat-input:focus { box-shadow: none; }
 
     .summary-chat-input::placeholder { color: #64748b; }
 
@@ -2396,6 +2495,24 @@
     renderSummaryChatMessages();
   }
 
+  /**
+   * Start a clean chat thread while preserving summary context + selected advisor instruction.
+   * This keeps expert suggestions so users can continue with the same perspective.
+   */
+  function startNewSummaryChatThread() {
+    if (summaryChatLoading || !summaryChatPopover) return;
+    summaryChatMessages = [];
+    summaryChatPendingImages = [];
+    summaryChatLastError = '';
+    summaryChatLoading = false;
+    const input = summaryChatPopover.querySelector('.summary-chat-input');
+    if (input) input.value = '';
+    renderSummaryChatPendingImages();
+    setSummaryChatInputDisabled(false);
+    renderSummaryChatMessages();
+    setTimeout(() => summaryChatPopover.querySelector('.summary-chat-input')?.focus(), 50);
+  }
+
   function setSummaryChatAdvisorsPanelOpen(open) {
     summaryChatAdvisorsPanelOpen = open;
     const btn = summaryChatPopover && summaryChatPopover.querySelector('.summary-chat-expert-btn');
@@ -2784,10 +2901,27 @@
         const hasImages = Array.isArray(m.images) && m.images.length > 0;
         const userText = (m.content || '').trim();
         if (userText) {
-          bubble.textContent = userText;
-        } else if (hasImages) {
-          bubble.textContent = `[Attached ${m.images.length} image${m.images.length > 1 ? 's' : ''}]`;
-        } else {
+          const textEl = document.createElement('span');
+          textEl.className = 'summary-chat-msg-user-text';
+          textEl.textContent = userText;
+          bubble.appendChild(textEl);
+        }
+        if (hasImages) {
+          const imagesWrap = document.createElement('div');
+          imagesWrap.className = 'summary-chat-msg-user-images';
+          m.images.forEach((img, idx) => {
+            if (!img || !img.mimeType || !img.data) return;
+            const preview = document.createElement('img');
+            preview.src = `data:${img.mimeType};base64,${img.data}`;
+            preview.alt = `Attachment ${idx + 1}`;
+            preview.loading = 'lazy';
+            imagesWrap.appendChild(preview);
+          });
+          if (imagesWrap.childElementCount > 0) {
+            bubble.appendChild(imagesWrap);
+          }
+        }
+        if (!bubble.childNodes.length) {
           bubble.textContent = '';
         }
         wrap.appendChild(bubble);
@@ -2823,9 +2957,11 @@
     const input = summaryChatPopover.querySelector('.summary-chat-input');
     const send = summaryChatPopover.querySelector('.summary-chat-send');
     const attachBtn = summaryChatPopover.querySelector('.summary-chat-attach');
+    const newThreadBtn = summaryChatPopover.querySelector('.summary-chat-new-thread');
     if (input) input.disabled = disabled;
     if (send) send.disabled = disabled;
     if (attachBtn) attachBtn.disabled = disabled;
+    if (newThreadBtn) newThreadBtn.disabled = disabled;
   }
 
   function isSummaryChatPopoverVisible() {
@@ -2868,8 +3004,10 @@
     }
     const send = summaryChatPopover.querySelector('.summary-chat-send');
     const attachBtn = summaryChatPopover.querySelector('.summary-chat-attach');
+    const newThreadBtn = summaryChatPopover.querySelector('.summary-chat-new-thread');
     if (send) send.disabled = true;
     if (attachBtn) attachBtn.disabled = true;
+    if (newThreadBtn) newThreadBtn.disabled = true;
   }
 
   function openStandaloneFastChat(selectionText) {
@@ -2897,12 +3035,14 @@
       const input = summaryChatPopover.querySelector('.summary-chat-input');
       const send = summaryChatPopover.querySelector('.summary-chat-send');
       const attachBtn = summaryChatPopover.querySelector('.summary-chat-attach');
+      const newThreadBtn = summaryChatPopover.querySelector('.summary-chat-new-thread');
       if (input) {
         input.disabled = false;
         input.placeholder = 'Ask about this summary...';
       }
       if (send) send.disabled = false;
       if (attachBtn) attachBtn.disabled = false;
+      if (newThreadBtn) newThreadBtn.disabled = false;
       positionSummaryChatPopover();
       summaryChatPopover.classList.add('visible');
       renderSummaryChatMessages();
@@ -3224,7 +3364,12 @@
               </svg>
             </button>
           </div>
-          <button type="button" class="summary-chat-copy-json" title="Copy chat as JSON">Copy JSON</button>
+          <button type="button" class="summary-chat-new-thread" title="Start a new chat (keep summary context and advisor)">
+            <img alt="" />
+          </button>
+          <button type="button" class="summary-chat-copy-json" title="Copy chat as JSON" aria-label="Copy chat as JSON">
+            <img alt="" />
+          </button>
           <button type="button" class="summary-chat-minimize" title="Minimize">−</button>
           <button type="button" class="summary-chat-close" title="Close">✕</button>
         </div>
@@ -3241,9 +3386,13 @@
       <div class="summary-chat-messages"></div>
       <div class="summary-chat-input-media" aria-live="polite"></div>
       <div class="summary-chat-footer">
-        <button type="button" class="summary-chat-attach" title="Attach image">✚</button>
         <input type="file" class="summary-chat-file-input" accept="image/*" multiple hidden />
-        <textarea class="summary-chat-input" placeholder="Ask about this summary..." rows="2"></textarea>
+        <div class="summary-chat-input-wrap">
+          <button type="button" class="summary-chat-attach" title="Attach image">
+            <img alt="" />
+          </button>
+          <textarea class="summary-chat-input" placeholder="Ask about this summary..." rows="2"></textarea>
+        </div>
         <button type="button" class="summary-chat-send">Send</button>
       </div>
     `;
@@ -3305,6 +3454,23 @@
       minimizeChatPanel();
     });
 
+    const summaryChatNewThreadBtn = summaryChatPopover.querySelector('.summary-chat-new-thread');
+    const summaryChatNewThreadIcon = summaryChatNewThreadBtn && summaryChatNewThreadBtn.querySelector('img');
+    if (summaryChatNewThreadIcon) {
+      summaryChatNewThreadIcon.src = chrome.runtime.getURL('icons/open_icon.svg');
+    }
+    if (summaryChatNewThreadBtn) {
+      summaryChatNewThreadBtn.addEventListener('click', () => {
+        startNewSummaryChatThread();
+      });
+    }
+
+    const summaryChatCopyBtn = summaryChatPopover.querySelector('.summary-chat-copy-json');
+    const summaryChatCopyIcon = summaryChatCopyBtn && summaryChatCopyBtn.querySelector('img');
+    if (summaryChatCopyIcon) {
+      summaryChatCopyIcon.src = chrome.runtime.getURL('icons/icons8-json-50.png');
+    }
+
     summaryChatPopover.querySelector('.summary-chat-close').addEventListener('click', () => {
       fastChatStandaloneMode = false;
       minimizedPanels.delete('chat');
@@ -3326,10 +3492,12 @@
       navigator.clipboard.writeText(text).then(
         () => {
           copyBtn.classList.add('copied');
-          copyBtn.textContent = 'Copied!';
+          copyBtn.title = 'Copied!';
+          copyBtn.setAttribute('aria-label', 'Copied!');
           setTimeout(() => {
             copyBtn.classList.remove('copied');
-            copyBtn.textContent = 'Copy JSON';
+            copyBtn.title = 'Copy chat as JSON';
+            copyBtn.setAttribute('aria-label', 'Copy chat as JSON');
           }, 1600);
         },
         () => {
@@ -3341,10 +3509,12 @@
           document.execCommand('copy');
           document.body.removeChild(tmp);
           copyBtn.classList.add('copied');
-          copyBtn.textContent = 'Copied!';
+          copyBtn.title = 'Copied!';
+          copyBtn.setAttribute('aria-label', 'Copied!');
           setTimeout(() => {
             copyBtn.classList.remove('copied');
-            copyBtn.textContent = 'Copy JSON';
+            copyBtn.title = 'Copy chat as JSON';
+            copyBtn.setAttribute('aria-label', 'Copy chat as JSON');
           }, 1600);
         }
       );
@@ -3356,9 +3526,14 @@
 
     const summaryChatInputEl = summaryChatPopover.querySelector('.summary-chat-input');
     const summaryChatAttachBtn = summaryChatPopover.querySelector('.summary-chat-attach');
+    const summaryChatAttachIcon = summaryChatAttachBtn && summaryChatAttachBtn.querySelector('img');
     const summaryChatFileInput = summaryChatPopover.querySelector('.summary-chat-file-input');
     summaryChatInputEl.setAttribute('autocomplete', 'off');
     renderSummaryChatPendingImages();
+
+    if (summaryChatAttachIcon) {
+      summaryChatAttachIcon.src = chrome.runtime.getURL('icons/icons8-clip-24.png');
+    }
 
     if (summaryChatAttachBtn && summaryChatFileInput) {
       summaryChatAttachBtn.addEventListener('click', () => {
