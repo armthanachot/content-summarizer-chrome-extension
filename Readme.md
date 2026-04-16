@@ -4,7 +4,7 @@
 
 | รายการ | ค่าจากโค้ด |
 |--------|------------|
-| ชื่อ / เวอร์ชัน | `Content Summarizer` · `1.2.4` (`manifest.json`) |
+| ชื่อ / เวอร์ชัน | `Content Summarizer` · `1.3.0` (`manifest.json`) |
 | ไฟล์หลัก | `manifest.json`, `background.js` (service worker), `content.js` (UI บนหน้าเว็บ) |
 | สิทธิ์ | `storage`, `activeTab`, `scripting`, `contextMenus` และ `host_permissions`: `<all_urls>` |
 
@@ -14,12 +14,13 @@
 - **แปล** — แปลเนื้อหาเป็นเป้าหมายที่เลือก (UI ใน `content.js` รองรับภาษาเช่น ไทย / อังกฤษ)
 - **สรุปจาก URL** — ดึง HTML แล้วดึงข้อความก่อนส่งให้ AI (`fetchAndSummarize` ใน `background.js`)
 - **คุยกับผู้ช่วยหลังสรุป** และ **Fast Chat** — ใช้ข้อความบทสรุปเป็นบริบท (`chat-about-summary`)
+- **แชทแบบ Multimodal** — ในช่องแชทรองรับการวางภาพ (base64/data URL), วางภาพจาก clipboard และแนบไฟล์ภาพผ่านปุ่ม `✚` พร้อม preview ก่อนส่ง
 - **อธิบายคำ/วลีในบริบทบทสรุป** — จากเมนูคลิกขวาหรือจาก UI (`explain-word`)
 
 ## ผู้ให้บริการ AI และโมเดล (อ้างอิง `PROVIDER_CONFIGS` ใน `background.js`)
 
 - **OpenAI** — โมเดลที่รองรับ: `gpt-4o-mini` (ใช้เป็นค่าเริ่มต้นทุกงาน: สรุป แปล อธิบาย แชท)
-- **Gemini** — โมเดลที่รองรับ: `gemini-3-flash-preview` (ค่าเริ่มต้นเช่นเดียวกันทุกงาน)
+- **Gemini** — โมเดลที่รองรับ: `gemini-2.5-flash` (ค่าเริ่มต้นเช่นเดียวกันทุกงาน)
 
 ผู้ใช้เลือกผู้ให้บริการและกรอก API key ใน modal การตั้งค่า; คีย์เก็บใน `chrome.storage.local` ด้วยคีย์ `CONTENT_SUMMARIZER_AI_PROVIDER`, `CONTENT_SUMMARIZER_OPENAI_TOKEN`, `CONTENT_SUMMARIZER_GEMINI_TOKEN` (ดู `STORAGE_KEYS` ใน `content.js`)
 
@@ -147,7 +148,7 @@
 
 ### `callOpenAIChat`
 
-ส่งบทสรุปเป็นบริบทใน system message รวมกับประวัติการสนทนาไปที่ API แชทของ OpenAI (`/v1/chat/completions`) ตั้ง `temperature: 0.4`, `max_tokens: 4096` แล้วคืนข้อความตอบจากผู้ช่วย
+ส่งบทสรุปเป็นบริบทรวมกับประวัติการสนทนาไปที่ OpenAI Responses API (`/v1/responses`) โดยฝั่งผู้ใช้ส่งเป็น multimodal input (ข้อความ + รูปภาพที่แนบ) แล้วอ่านข้อความตอบจาก `output[].content[].text`
 
 ### `callGeminiChat`
 
@@ -163,7 +164,7 @@
 
 ### `callGemini`
 
-เรียก `generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` โดยจัดวาง system prompt และ user prompt ใน `contents` เป็น MODEL แล้ว USER ตามที่ API ต้องการ แล้วรวมข้อความจากส่วนตอบกลับ
+เรียก `generativelanguage.googleapis.com/v1/models/{model}:generateContent` โดยจัดวาง system prompt และ user prompt ใน `contents` เป็น MODEL แล้ว USER ตามที่ API ต้องการ (กรณีแชทผู้ใช้รองรับ parts แบบ text + inline_data) แล้วรวมข้อความจากส่วนตอบกลับ
 
 ### `extractTextFromHtml`
 

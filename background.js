@@ -491,15 +491,40 @@ async function chatAboutSummary(
 
 async function callOpenAIChat(apiKey, model, summaryContext, history, advisorPersona) {
   const systemContent = buildChatSystemBlock(summaryContext, advisorPersona);
-  const openAiMessages = [
-    { role: 'system', content: systemContent },
-    ...history.map((m) => ({
-      role: m.role === 'user' ? 'user' : 'assistant',
-      content: m.content || '',
-    })),
+  const input = [
+    {
+      role: 'assistant',
+      content: systemContent,
+    },
+    ...history.map((m) => {
+      const role = m.role === 'user' ? 'user' : 'assistant';
+      if (role !== 'user') {
+        return { role, content: m.content || '' };
+      }
+      const textContent = typeof m.content === 'string' ? m.content : '';
+      const contentParts = [];
+      if (textContent.trim()) {
+        contentParts.push({
+          type: 'input_text',
+          text: textContent,
+        });
+      }
+      const images = Array.isArray(m.images) ? m.images : [];
+      images.forEach((image) => {
+        if (!image || !image.data || !image.mimeType) return;
+        contentParts.push({
+          type: 'input_image',
+          image_url: `data:${image.mimeType};base64,${image.data}`,
+        });
+      });
+      return {
+        role,
+        content: contentParts.length ? contentParts : [{ type: 'input_text', text: textContent }],
+      };
+    }),
   ];
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -507,9 +532,9 @@ async function callOpenAIChat(apiKey, model, summaryContext, history, advisorPer
     },
     body: JSON.stringify({
       model,
-      messages: openAiMessages,
+      input,
       temperature: 0.4,
-      max_tokens: 4096,
+      max_output_tokens: 4096,
     }),
   });
 
@@ -521,7 +546,7 @@ async function callOpenAIChat(apiKey, model, summaryContext, history, advisorPer
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  return extractOpenAIResponseText(data);
 }
 
 async function callGeminiChat(apiKey, model, summaryContext, history, advisorPersona) {
@@ -543,7 +568,10 @@ async function callGeminiChat(apiKey, model, summaryContext, history, advisorPer
           },
           ...history.map((m) => ({
             role: m.role === 'user' ? 'USER' : 'MODEL',
-            parts: [{ text: m.content || '' }],
+            parts:
+              m.role === 'user'
+                ? buildGeminiUserParts(m.content || '', m.images)
+                : [{ text: m.content || '' }],
           })),
         ],
         generationConfig: {
@@ -568,6 +596,41 @@ async function callGeminiChat(apiKey, model, summaryContext, history, advisorPer
     .trim();
   if (!text) throw new Error('Gemini returned an empty response.');
   return text;
+}
+
+function buildGeminiUserParts(text, images) {
+  const parts = [];
+  const safeText = typeof text === 'string' ? text : '';
+  if (safeText.trim()) {
+    parts.push({ text: safeText });
+  }
+  const safeImages = Array.isArray(images) ? images : [];
+  safeImages.forEach((image) => {
+    if (!image || !image.data || !image.mimeType) return;
+    parts.push({
+      inline_data: {
+        mime_type: image.mimeType,
+        data: image.data,
+      },
+    });
+  });
+  return parts.length ? parts : [{ text: safeText }];
+}
+
+function extractOpenAIResponseText(responseData) {
+  const output = Array.isArray(responseData?.output) ? responseData.output : [];
+  const chunks = [];
+  output.forEach((item) => {
+    if (!item || item.type !== 'message') return;
+    const content = Array.isArray(item.content) ? item.content : [];
+    content.forEach((part) => {
+      if (!part) return;
+      if (part.type === 'output_text' && typeof part.text === 'string') {
+        chunks.push(part.text);
+      }
+    });
+  });
+  return chunks.join('').trim();
 }
 
 async function explainWord(provider, apiKey, term, context, modelPreference) {

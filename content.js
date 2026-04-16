@@ -1719,6 +1719,79 @@
       align-items: flex-end;
     }
 
+    .summary-chat-input-media {
+      display: none;
+      gap: 8px;
+      padding: 10px 12px 0;
+      background: #0c1422;
+      border-top: 1px solid #1e3a8a;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .summary-chat-input-media.visible {
+      display: flex;
+    }
+
+    .summary-chat-media-item {
+      position: relative;
+      width: 54px;
+      height: 54px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      overflow: hidden;
+      flex: 0 0 auto;
+      background: #020617;
+    }
+
+    .summary-chat-media-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .summary-chat-media-remove {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 18px;
+      height: 18px;
+      border: none;
+      border-radius: 50%;
+      background: #dc2626;
+      color: #fff;
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .summary-chat-media-item:hover .summary-chat-media-remove {
+      display: inline-flex;
+    }
+
+    .summary-chat-attach {
+      width: 34px;
+      height: 34px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #1e293b;
+      color: #e2e8f0;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .summary-chat-attach:hover:not(:disabled) {
+      border-color: #60a5fa;
+      color: #fff;
+    }
+
     .summary-chat-input {
       flex: 1;
       min-height: 44px;
@@ -2070,8 +2143,10 @@
 
   let minimizedDockResizeBound = false;
 
-  /** @type {{ role: 'user' | 'assistant', content: string }[]} */
+  /** @type {{ role: 'user' | 'assistant', content: string, images?: { mimeType: string, data: string }[] }[]} */
   let summaryChatMessages = [];
+  /** @type {{ id: string, mimeType: string, data: string, previewUrl: string }[]} */
+  let summaryChatPendingImages = [];
   let summaryChatLoading = false;
   let summaryChatLastError = '';
   const DEFAULT_ADVISOR_VALUE = 'CHAT_SYSTEM_INSTRUCTION';
@@ -2090,9 +2165,17 @@
   let lastContextMenuPos = { x: 100, y: 100 };
   const INIT_W = 560;
   const INIT_H = 500;
+  const IMAGE_MIME_ALLOWLIST = new Set([
+    'image/png',
+    'image/jpeg',
+    'image/jpg',
+    'image/webp',
+    'image/gif',
+  ]);
 
   function resetSummaryChatSession() {
     summaryChatMessages = [];
+    summaryChatPendingImages = [];
     summaryChatLoading = false;
     summaryChatLastError = '';
     summaryChatRect = null;
@@ -2106,6 +2189,128 @@
       if (input) input.value = '';
       if (msgs) msgs.innerHTML = '';
     }
+    renderSummaryChatPendingImages();
+  }
+
+  function createSummaryChatImageId() {
+    return `img_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  }
+
+  function normalizeImageMimeType(mimeType) {
+    const safeType = (mimeType || '').toLowerCase();
+    if (safeType === 'image/jpg') return 'image/jpeg';
+    return safeType;
+  }
+
+  function detectMimeTypeFromBase64(base64) {
+    if (!base64) return '';
+    try {
+      const bytes = atob(base64.slice(0, 32));
+      if (bytes.startsWith('\x89PNG')) return 'image/png';
+      if (bytes.startsWith('\xff\xd8\xff')) return 'image/jpeg';
+      if (bytes.startsWith('GIF8')) return 'image/gif';
+      if (bytes.startsWith('RIFF') && bytes.includes('WEBP')) return 'image/webp';
+    } catch {}
+    return '';
+  }
+
+  function parseDataUrlImage(rawDataUrl) {
+    if (typeof rawDataUrl !== 'string') return null;
+    const trimmed = rawDataUrl.trim();
+    const match = trimmed.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)$/);
+    if (!match) return null;
+    const mimeType = normalizeImageMimeType(match[1]);
+    const data = match[2].replace(/\s+/g, '');
+    if (!IMAGE_MIME_ALLOWLIST.has(mimeType) || !data) return null;
+    return {
+      id: createSummaryChatImageId(),
+      mimeType,
+      data,
+      previewUrl: `data:${mimeType};base64,${data}`,
+    };
+  }
+
+  function parseRawBase64Image(rawBase64) {
+    const cleaned = (rawBase64 || '').replace(/\s+/g, '');
+    if (!cleaned || cleaned.length < 100) return null;
+    if (!/^[A-Za-z0-9+/=]+$/.test(cleaned)) return null;
+    const mimeType = detectMimeTypeFromBase64(cleaned);
+    if (!mimeType || !IMAGE_MIME_ALLOWLIST.has(mimeType)) return null;
+    return {
+      id: createSummaryChatImageId(),
+      mimeType,
+      data: cleaned,
+      previewUrl: `data:${mimeType};base64,${cleaned}`,
+    };
+  }
+
+  function extractBase64ImagesFromText(text) {
+    const safeText = typeof text === 'string' ? text : '';
+    const matches = safeText.match(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+/g) || [];
+    const parsed = matches
+      .map((chunk) => parseDataUrlImage(chunk))
+      .filter(Boolean);
+    if (parsed.length > 0) return parsed;
+    const raw = parseRawBase64Image(safeText.trim());
+    return raw ? [raw] : [];
+  }
+
+  function addSummaryChatImages(images) {
+    if (!Array.isArray(images) || images.length === 0) return;
+    const dedupe = new Set(summaryChatPendingImages.map((img) => `${img.mimeType}:${img.data.slice(0, 80)}`));
+    images.forEach((img) => {
+      const key = `${img.mimeType}:${img.data.slice(0, 80)}`;
+      if (!dedupe.has(key)) {
+        summaryChatPendingImages.push(img);
+        dedupe.add(key);
+      }
+    });
+    renderSummaryChatPendingImages();
+  }
+
+  function removeSummaryChatPendingImage(imageId) {
+    summaryChatPendingImages = summaryChatPendingImages.filter((img) => img.id !== imageId);
+    renderSummaryChatPendingImages();
+  }
+
+  function renderSummaryChatPendingImages() {
+    if (!summaryChatPopover) return;
+    const container = summaryChatPopover.querySelector('.summary-chat-input-media');
+    if (!container) return;
+    container.innerHTML = '';
+    if (summaryChatPendingImages.length === 0) {
+      container.classList.remove('visible');
+      return;
+    }
+    container.classList.add('visible');
+    summaryChatPendingImages.forEach((img) => {
+      const item = document.createElement('div');
+      item.className = 'summary-chat-media-item';
+      const preview = document.createElement('img');
+      preview.alt = 'Attached image';
+      preview.src = img.previewUrl;
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'summary-chat-media-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', () => removeSummaryChatPendingImage(img.id));
+      item.appendChild(preview);
+      item.appendChild(removeBtn);
+      container.appendChild(item);
+    });
+  }
+
+  async function readImageFileAsAttachment(file) {
+    return new Promise((resolve) => {
+      if (!file || !IMAGE_MIME_ALLOWLIST.has(normalizeImageMimeType(file.type))) {
+        resolve(null);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => resolve(parseDataUrlImage(reader.result || ''));
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
   }
 
   function clearSummaryChatExpertAdvisorsUi() {
@@ -2576,7 +2781,15 @@
         wrap.className = 'summary-chat-msg-user-wrap';
         const bubble = document.createElement('div');
         bubble.className = 'summary-chat-msg-user';
-        bubble.textContent = m.content;
+        const hasImages = Array.isArray(m.images) && m.images.length > 0;
+        const userText = (m.content || '').trim();
+        if (userText) {
+          bubble.textContent = userText;
+        } else if (hasImages) {
+          bubble.textContent = `[Attached ${m.images.length} image${m.images.length > 1 ? 's' : ''}]`;
+        } else {
+          bubble.textContent = '';
+        }
         wrap.appendChild(bubble);
         container.appendChild(wrap);
       } else {
@@ -2609,8 +2822,10 @@
     if (!summaryChatPopover) return;
     const input = summaryChatPopover.querySelector('.summary-chat-input');
     const send = summaryChatPopover.querySelector('.summary-chat-send');
+    const attachBtn = summaryChatPopover.querySelector('.summary-chat-attach');
     if (input) input.disabled = disabled;
     if (send) send.disabled = disabled;
+    if (attachBtn) attachBtn.disabled = disabled;
   }
 
   function isSummaryChatPopoverVisible() {
@@ -2652,7 +2867,9 @@
       input.disabled = true;
     }
     const send = summaryChatPopover.querySelector('.summary-chat-send');
+    const attachBtn = summaryChatPopover.querySelector('.summary-chat-attach');
     if (send) send.disabled = true;
+    if (attachBtn) attachBtn.disabled = true;
   }
 
   function openStandaloneFastChat(selectionText) {
@@ -2679,11 +2896,13 @@
       summaryChatLastError = '';
       const input = summaryChatPopover.querySelector('.summary-chat-input');
       const send = summaryChatPopover.querySelector('.summary-chat-send');
+      const attachBtn = summaryChatPopover.querySelector('.summary-chat-attach');
       if (input) {
         input.disabled = false;
         input.placeholder = 'Ask about this summary...';
       }
       if (send) send.disabled = false;
+      if (attachBtn) attachBtn.disabled = false;
       positionSummaryChatPopover();
       summaryChatPopover.classList.add('visible');
       renderSummaryChatMessages();
@@ -2714,13 +2933,19 @@
     if (!summaryChatPopover || summaryChatLoading) return;
     const input = summaryChatPopover.querySelector('.summary-chat-input');
     const text = (input && input.value ? input.value : '').trim();
-    if (!text) return;
+    const pendingImages = summaryChatPendingImages.map((img) => ({
+      mimeType: img.mimeType,
+      data: img.data,
+    }));
+    if (!text && pendingImages.length === 0) return;
     const context = (rawResponse || '').trim();
     if (!context) return;
 
     summaryChatLastError = '';
     input.value = '';
-    summaryChatMessages.push({ role: 'user', content: text });
+    summaryChatMessages.push({ role: 'user', content: text, images: pendingImages });
+    summaryChatPendingImages = [];
+    renderSummaryChatPendingImages();
     summaryChatLoading = true;
     setSummaryChatInputDisabled(true);
     renderSummaryChatMessages();
@@ -3014,7 +3239,10 @@
         </div>
       </div>
       <div class="summary-chat-messages"></div>
+      <div class="summary-chat-input-media" aria-live="polite"></div>
       <div class="summary-chat-footer">
+        <button type="button" class="summary-chat-attach" title="Attach image">✚</button>
+        <input type="file" class="summary-chat-file-input" accept="image/*" multiple hidden />
         <textarea class="summary-chat-input" placeholder="Ask about this summary..." rows="2"></textarea>
         <button type="button" class="summary-chat-send">Send</button>
       </div>
@@ -3088,7 +3316,11 @@
       const copyBtn = summaryChatPopover.querySelector('.summary-chat-copy-json');
       const payload = {
         summaryContext: rawResponse || '',
-        messages: summaryChatMessages.map((m) => ({ role: m.role, content: m.content })),
+        messages: summaryChatMessages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          images: Array.isArray(m.images) ? m.images : [],
+        })),
       };
       const text = JSON.stringify(payload, null, 2);
       navigator.clipboard.writeText(text).then(
@@ -3123,7 +3355,46 @@
     });
 
     const summaryChatInputEl = summaryChatPopover.querySelector('.summary-chat-input');
+    const summaryChatAttachBtn = summaryChatPopover.querySelector('.summary-chat-attach');
+    const summaryChatFileInput = summaryChatPopover.querySelector('.summary-chat-file-input');
     summaryChatInputEl.setAttribute('autocomplete', 'off');
+    renderSummaryChatPendingImages();
+
+    if (summaryChatAttachBtn && summaryChatFileInput) {
+      summaryChatAttachBtn.addEventListener('click', () => {
+        if (summaryChatAttachBtn.disabled) return;
+        summaryChatFileInput.click();
+      });
+      summaryChatFileInput.addEventListener('change', async () => {
+        const files = Array.from(summaryChatFileInput.files || []);
+        if (files.length === 0) return;
+        const attachments = await Promise.all(files.map((file) => readImageFileAsAttachment(file)));
+        addSummaryChatImages(attachments.filter(Boolean));
+        summaryChatFileInput.value = '';
+      });
+    }
+
+    summaryChatInputEl.addEventListener('paste', async (e) => {
+      if (summaryChatLoading) return;
+      const clipboardItems = Array.from(e.clipboardData?.items || []);
+      const imageFiles = clipboardItems
+        .filter((item) => item.kind === 'file')
+        .map((item) => item.getAsFile())
+        .filter(Boolean);
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        const attachments = await Promise.all(imageFiles.map((file) => readImageFileAsAttachment(file)));
+        addSummaryChatImages(attachments.filter(Boolean));
+        return;
+      }
+      const clipboardText = e.clipboardData?.getData('text/plain') || '';
+      const parsedImages = extractBase64ImagesFromText(clipboardText);
+      if (parsedImages.length > 0) {
+        e.preventDefault();
+        addSummaryChatImages(parsedImages);
+      }
+    });
+
     summaryChatInputEl.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' || e.shiftKey) return;
       // IME / CJK / some Thai keyboards: never hijack Enter during composition
