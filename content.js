@@ -1749,7 +1749,7 @@
       grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
       gap: 6px;
       margin-top: 8px;
-      max-width: 230px;
+      max-width: 260px;
     }
 
     .summary-chat-msg-user-images:only-child {
@@ -1758,12 +1758,74 @@
 
     .summary-chat-msg-user-images img {
       width: 100%;
-      aspect-ratio: 1 / 1;
-      object-fit: cover;
+      aspect-ratio: auto;
+      object-fit: contain;
+      max-height: 170px;
       border-radius: 8px;
       border: 1px solid rgba(255, 255, 255, 0.35);
       display: block;
       background: rgba(15, 23, 42, 0.45);
+      cursor: zoom-in;
+    }
+
+    .summary-chat-image-viewer {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 6, 23, 0.72);
+      z-index: 4;
+      padding: 18px;
+      box-sizing: border-box;
+    }
+
+    .summary-chat-image-viewer.visible {
+      display: flex;
+    }
+
+    .summary-chat-image-viewer-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .summary-chat-image-viewer-image {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      box-shadow: 0 18px 48px rgba(2, 6, 23, 0.75);
+      background: rgba(2, 6, 23, 0.7);
+    }
+
+    .summary-chat-image-viewer-close {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 30px;
+      height: 30px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.8);
+      color: #f8fafc;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .summary-chat-image-viewer-close:hover {
+      background: rgba(30, 41, 59, 0.95);
     }
 
     .summary-chat-msg-error {
@@ -2261,6 +2323,7 @@
   let summaryChatAdvisorsLoading = false;
   let summaryChatAdvisorsPanelOpen = false;
   let summaryChatExpertOutsideCloseBound = false;
+  let summaryChatImageViewerOpen = false;
   /** Last chat window geometry while main modal is open (cleared when main modal closes). */
   let summaryChatRect = null;
   /** True when chat was opened from context menu "Fast Chat" without the main modal. */
@@ -2281,6 +2344,7 @@
     summaryChatPendingImages = [];
     summaryChatLoading = false;
     summaryChatLastError = '';
+    closeSummaryChatImageViewer();
     summaryChatRect = null;
     clearSummaryChatExpertAdvisorsUi();
     minimizedPanels.delete('chat');
@@ -2861,6 +2925,7 @@
 
   function minimizeChatPanel() {
     persistSummaryChatLayout();
+    closeSummaryChatImageViewer();
     summaryChatPopover.classList.remove('visible');
     minimizedPanels.add('chat');
     updateMinimizedDock();
@@ -2894,6 +2959,30 @@
     summaryChatPopover.style.top = Math.max(12, (window.innerHeight - h) / 2) + 'px';
   }
 
+  function openSummaryChatImageViewer(imageSrc, altText) {
+    if (!summaryChatPopover || !imageSrc) return;
+    const viewer = summaryChatPopover.querySelector('.summary-chat-image-viewer');
+    const imageEl = summaryChatPopover.querySelector('.summary-chat-image-viewer-image');
+    if (!viewer || !imageEl) return;
+    imageEl.src = imageSrc;
+    imageEl.alt = altText || 'Expanded chat image';
+    viewer.classList.add('visible');
+    viewer.setAttribute('aria-hidden', 'false');
+    summaryChatImageViewerOpen = true;
+  }
+
+  function closeSummaryChatImageViewer() {
+    if (!summaryChatPopover) return;
+    const viewer = summaryChatPopover.querySelector('.summary-chat-image-viewer');
+    const imageEl = summaryChatPopover.querySelector('.summary-chat-image-viewer-image');
+    if (!viewer || !imageEl) return;
+    viewer.classList.remove('visible');
+    viewer.setAttribute('aria-hidden', 'true');
+    imageEl.src = '';
+    imageEl.alt = '';
+    summaryChatImageViewerOpen = false;
+  }
+
   function renderSummaryChatMessages() {
     if (!summaryChatPopover) return;
     const container = summaryChatPopover.querySelector('.summary-chat-messages');
@@ -2922,6 +3011,9 @@
             preview.src = `data:${img.mimeType};base64,${img.data}`;
             preview.alt = `Attachment ${idx + 1}`;
             preview.loading = 'lazy';
+            preview.addEventListener('click', () =>
+              openSummaryChatImageViewer(preview.src, preview.alt)
+            );
             imagesWrap.appendChild(preview);
           });
           if (imagesWrap.childElementCount > 0) {
@@ -3472,6 +3564,12 @@
         </div>
       </div>
       <div class="summary-chat-messages"></div>
+      <div class="summary-chat-image-viewer" aria-hidden="true">
+        <div class="summary-chat-image-viewer-inner">
+          <button type="button" class="summary-chat-image-viewer-close" aria-label="Close image preview" title="Close">✕</button>
+          <img class="summary-chat-image-viewer-image" alt="" />
+        </div>
+      </div>
       <div class="summary-chat-input-media" aria-live="polite"></div>
       <div class="summary-chat-footer">
         <input type="file" class="summary-chat-file-input" accept="image/*" multiple hidden />
@@ -3564,6 +3662,7 @@
       fastChatStandaloneMode = false;
       minimizedPanels.delete('chat');
       if (minimizedDock) updateMinimizedDock();
+      closeSummaryChatImageViewer();
       summaryChatPopover.classList.remove('visible');
     });
 
@@ -3668,6 +3767,31 @@
       if (summaryChatLoading) return;
       e.preventDefault();
       sendSummaryChatTurn();
+    });
+
+    const summaryChatImageViewer = summaryChatPopover.querySelector('.summary-chat-image-viewer');
+    const summaryChatImageViewerInner = summaryChatPopover.querySelector('.summary-chat-image-viewer-inner');
+    const summaryChatImageViewerCloseBtn = summaryChatPopover.querySelector('.summary-chat-image-viewer-close');
+
+    if (summaryChatImageViewer) {
+      summaryChatImageViewer.addEventListener('click', () => {
+        closeSummaryChatImageViewer();
+      });
+    }
+    if (summaryChatImageViewerInner) {
+      summaryChatImageViewerInner.addEventListener('click', (e) => e.stopPropagation());
+    }
+    if (summaryChatImageViewerCloseBtn) {
+      summaryChatImageViewerCloseBtn.addEventListener('click', () => {
+        closeSummaryChatImageViewer();
+      });
+    }
+
+    summaryChatPopover.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && summaryChatImageViewerOpen) {
+        e.preventDefault();
+        closeSummaryChatImageViewer();
+      }
     });
 
     initSummaryChatDrag();
