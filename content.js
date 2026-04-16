@@ -16,6 +16,8 @@
   const INJECTED_ID = 'cs-ext-injected';
   const POPOVER_ID = 'cs-ext-popover';
   const MODAL_ID = 'cs-ext-modal';
+  const FLOATING_STACK_ROOT_Z_INDEX = 2147483000;
+  const FLOATING_STACK_MAX_Z_INDEX = 2147483600;
 
   const LANGUAGES = [
     { code: 'th', name: 'ไทย', flag: '🇹🇭' },
@@ -272,7 +274,7 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       font-size: 14px;
       color: #2E3A2E;
-      z-index: 2147483647;
+      z-index: ${FLOATING_STACK_ROOT_Z_INDEX + 1};
       pointer-events: auto;
     }
 
@@ -1106,7 +1108,7 @@
       height: 420px;
       display: none;
       flex-direction: column;
-      z-index: 2147483648;
+      z-index: ${FLOATING_STACK_ROOT_Z_INDEX + 2};
       pointer-events: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       font-size: 13px;
@@ -1326,7 +1328,7 @@
       min-height: 200px;
       display: none;
       flex-direction: column;
-      z-index: 2147483649;
+      z-index: ${FLOATING_STACK_ROOT_Z_INDEX + 3};
       pointer-events: auto;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       font-size: 13px;
@@ -2001,7 +2003,7 @@
       box-shadow: 0 12px 28px rgba(15, 23, 42, 0.26);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      z-index: 2147483650;
+      z-index: ${FLOATING_STACK_ROOT_Z_INDEX + 4};
       pointer-events: auto;
       max-height: calc(100vh - 48px);
     }
@@ -2218,7 +2220,7 @@
   let pendingText = '';
   let lastSelectedText = '';
   let responseCache = {};
-  let floatingWindowTopZIndex = 2147483649;
+  let floatingWindowTopZIndex = FLOATING_STACK_ROOT_Z_INDEX + 4;
 
   let modalRoot = null;
   let modalShadow = null;
@@ -2973,8 +2975,36 @@
     return !!(summaryChatPopover && summaryChatPopover.classList.contains('visible'));
   }
 
+  function getVisibleFloatingWindowsSorted() {
+    const windows = [modal, wordExplainPopover, summaryChatPopover, minimizedDock]
+      .filter(Boolean)
+      .filter((el) => {
+        if (el === minimizedDock) return minimizedPanels.size > 0;
+        if (el === modal) return modal.style.display !== 'none';
+        return el.classList.contains('visible');
+      });
+    return windows.sort((a, b) => {
+      const az = Number.parseInt(a.style.zIndex || '0', 10) || 0;
+      const bz = Number.parseInt(b.style.zIndex || '0', 10) || 0;
+      return az - bz;
+    });
+  }
+
+  function normalizeFloatingWindowStack() {
+    const windows = getVisibleFloatingWindowsSorted();
+    let current = FLOATING_STACK_ROOT_Z_INDEX + 1;
+    windows.forEach((el) => {
+      el.style.zIndex = String(current);
+      current += 1;
+    });
+    floatingWindowTopZIndex = current - 1;
+  }
+
   function bringFloatingWindowToFront(winEl) {
     if (!winEl) return;
+    if (floatingWindowTopZIndex >= FLOATING_STACK_MAX_Z_INDEX) {
+      normalizeFloatingWindowStack();
+    }
     floatingWindowTopZIndex += 1;
     winEl.style.zIndex = String(floatingWindowTopZIndex);
   }
@@ -3336,7 +3366,7 @@
     modalRoot = document.createElement('div');
     modalRoot.id = MODAL_ID;
     modalRoot.style.cssText =
-      'all:initial; position:fixed; top:0; left:0; width:0; height:0; z-index:2147483647; pointer-events:none;';
+      `all:initial; position:fixed; top:0; left:0; width:0; height:0; z-index:${FLOATING_STACK_ROOT_Z_INDEX}; pointer-events:none;`;
 
     modalShadow = modalRoot.attachShadow({ mode: 'open' });
 
