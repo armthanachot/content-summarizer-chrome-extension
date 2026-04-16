@@ -249,7 +249,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       request.summaryContext,
       request.messages,
       request.model,
-      request.advisorPersona
+      request.advisorPersona,
+      request.sourceUrl
     )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
@@ -421,7 +422,7 @@ If a query is completely unrelated to both the summary and the user’s known in
 `;
 const DEFAULT_ADVISOR_VALUE = 'CHAT_SYSTEM_INSTRUCTION';
 
-function buildChatSystemBlock(summaryContext, advisorPersona) {
+function buildChatSystemBlock(summaryContext, advisorPersona, sourceContextBlock) {
   const isDefaultAdvisor =
     advisorPersona &&
     typeof advisorPersona.value === 'string' &&
@@ -434,7 +435,74 @@ function buildChatSystemBlock(summaryContext, advisorPersona) {
   if (instructionRaw) {
     systemPreamble += `\n\nact as ${instructionRaw}`;
   }
-  return `${systemPreamble}\n\n---\nSummary (markdown):\n${summaryContext}\n---`;
+  const sourceSection = sourceContextBlock
+    ? `\n\n---\nOptional source details (only use when the user asks to reference/fetch from source):\n${sourceContextBlock}\n---`
+    : '';
+  return `${systemPreamble}\n\n---\nSummary (markdown):\n${summaryContext}\n---${sourceSection}`;
+}
+
+function sanitizeSourceUrl(rawUrl) {
+  if (typeof rawUrl !== 'string') return '';
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return '';
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    return parsed.toString();
+  } catch {
+    return '';
+  }
+}
+
+function shouldEnrichFromSource(lastUserMessage) {
+  const text = (lastUserMessage || '').toLowerCase();
+  if (!text) return false;
+  const sourceIntentHints = [
+    '@source',
+    '#source',
+    'from source',
+    'source url',
+    'original page',
+    'from docs',
+    'documentation',
+    'reference',
+    'quote',
+    'extract code',
+    'code snippet',
+    'show code',
+    'อ้างอิงต้นฉบับ',
+    'จากต้นฉบับ',
+    'จาก source',
+    'จาก url',
+    'จากลิงก์',
+    'จาก docs',
+    'ดึงโค้ด',
+    'ยกโค้ด',
+  ];
+  return sourceIntentHints.some((hint) => text.includes(hint));
+}
+
+async function fetchSourceContextSnippet(url) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { Accept: 'text/html,application/xhtml+xml,*/*' },
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const html = await response.text();
+    const text = extractTextFromHtml(html);
+    if (!text || text.trim().length < 20) return '';
+    const MAX_SOURCE_CONTEXT_CHARS = 8000;
+    return text.length > MAX_SOURCE_CONTEXT_CHARS
+      ? `${text.slice(0, MAX_SOURCE_CONTEXT_CHARS)}\n\n[Source content truncated...]`
+      : text;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function suggestExpertAdvisors(provider, apiKey, summaryContext, modelPreference) {
@@ -465,7 +533,8 @@ async function chatAboutSummary(
   summaryContext,
   messages,
   modelPreference,
-  advisorPersona
+  advisorPersona,
+  sourceUrl
 ) {
   const trimmedSummary = (summaryContext || '').trim();
   if (!trimmedSummary) {
@@ -479,18 +548,54 @@ async function chatAboutSummary(
   ) {
     throw new Error('Invalid chat messages: last message must be a non-empty user message.');
   }
+  const lastUserMessage = typeof history[history.length - 1].content === 'string'
+    ? history[history.length - 1].content
+    : '';
+  const normalizedSourceUrl = sanitizeSourceUrl(sourceUrl);
+  let sourceContextBlock = '';
+  if (normalizedSourceUrl && shouldEnrichFromSource(lastUserMessage)) {
+    try {
+      const snippet = await fetchSourceContextSnippet(normalizedSourceUrl);
+      if (snippet) {
+        sourceContextBlock = `Source URL: ${normalizedSourceUrl}\n\n${snippet}`;
+      }
+    } catch (err) {
+      console.warn('Content Summarizer: source enrichment skipped.', err?.message || err);
+    }
+  }
 
   const client = await initializeAI(provider, apiKey, modelPreference);
   const model = resolveModelSelection(client.provider, 'chat', client.modelPreference);
 
   if (client.provider === 'gemini') {
-    return callGeminiChat(client.apiKey, model, trimmedSummary, history, advisorPersona);
+    return callGeminiChat(
+      client.apiKey,
+      model,
+      trimmedSummary,
+      history,
+      advisorPersona,
+      sourceContextBlock
+    );
   }
-  return callOpenAIChat(client.apiKey, model, trimmedSummary, history, advisorPersona);
+  return callOpenAIChat(
+    client.apiKey,
+    model,
+    trimmedSummary,
+    history,
+    advisorPersona,
+    sourceContextBlock
+  );
 }
 
-async function callOpenAIChat(apiKey, model, summaryContext, history, advisorPersona) {
-  const systemContent = buildChatSystemBlock(summaryContext, advisorPersona);
+async function callOpenAIChat(
+  apiKey,
+  model,
+  summaryContext,
+  history,
+  advisorPersona,
+  sourceContextBlock
+) {
+  const systemContent = buildChatSystemBlock(summaryContext, advisorPersona, sourceContextBlock);
   const input = [
     {
       role: 'assistant',
@@ -549,8 +654,15 @@ async function callOpenAIChat(apiKey, model, summaryContext, history, advisorPer
   return extractOpenAIResponseText(data);
 }
 
-async function callGeminiChat(apiKey, model, summaryContext, history, advisorPersona) {
-  const systemBlock = buildChatSystemBlock(summaryContext, advisorPersona);
+async function callGeminiChat(
+  apiKey,
+  model,
+  summaryContext,
+  history,
+  advisorPersona,
+  sourceContextBlock
+) {
+  const systemBlock = buildChatSystemBlock(summaryContext, advisorPersona, sourceContextBlock);
   const response = await fetch(
     // `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent`,

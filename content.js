@@ -2212,11 +2212,13 @@
   };
   let rawResponse = '';
   let originalResponse = '';
+  let summarySourceUrl = '';
   let isLoading = false;
   let hasBeenDragged = false;
   let pendingText = '';
   let lastSelectedText = '';
   let responseCache = {};
+  let floatingWindowTopZIndex = 2147483649;
 
   let modalRoot = null;
   let modalShadow = null;
@@ -2810,11 +2812,14 @@
     updateMinimizedDock();
     if (key === 'summary') {
       modal.style.display = 'flex';
+      bringFloatingWindowToFront(modal);
     } else if (key === 'explain') {
       wordExplainPopover.classList.add('visible');
+      bringFloatingWindowToFront(wordExplainPopover);
     } else if (key === 'chat') {
       positionSummaryChatPopover();
       summaryChatPopover.classList.add('visible');
+      bringFloatingWindowToFront(summaryChatPopover);
       setTimeout(() => summaryChatPopover.querySelector('.summary-chat-input')?.focus(), 50);
     }
   }
@@ -2968,6 +2973,51 @@
     return !!(summaryChatPopover && summaryChatPopover.classList.contains('visible'));
   }
 
+  function bringFloatingWindowToFront(winEl) {
+    if (!winEl) return;
+    floatingWindowTopZIndex += 1;
+    winEl.style.zIndex = String(floatingWindowTopZIndex);
+  }
+
+  function buildExplainContextFromSummaryAndChat() {
+    const summary = (rawResponse || '').trim();
+    if (!summary) return '';
+    const shouldIncludeChatSession =
+      isSummaryChatPopoverVisible() ||
+      (Array.isArray(summaryChatMessages) && summaryChatMessages.length > 0);
+    if (!shouldIncludeChatSession) {
+      return summary;
+    }
+
+    const transcriptLines = [];
+    summaryChatMessages.forEach((msg) => {
+      if (!msg || (msg.role !== 'user' && msg.role !== 'assistant')) return;
+      const roleLabel = msg.role === 'user' ? 'User' : 'Assistant';
+      const text = typeof msg.content === 'string' ? msg.content.trim() : '';
+      const images = Array.isArray(msg.images) ? msg.images.length : 0;
+      if (text) {
+        transcriptLines.push(`${roleLabel}: ${text}`);
+      } else if (images > 0) {
+        transcriptLines.push(`${roleLabel}: [Attached ${images} image${images > 1 ? 's' : ''}]`);
+      }
+      if (images > 0 && text) {
+        transcriptLines.push(`${roleLabel}: [Attached ${images} image${images > 1 ? 's' : ''}]`);
+      }
+    });
+
+    if (transcriptLines.length === 0) {
+      return summary;
+    }
+
+    return [
+      'Summary context:',
+      summary,
+      '',
+      'Chat session context:',
+      transcriptLines.join('\n'),
+    ].join('\n');
+  }
+
   function openSummaryChatPanel() {
     if (!summaryChatPopover || !rawResponse || !rawResponse.trim()) return;
     minimizedPanels.delete('chat');
@@ -2978,6 +3028,7 @@
     }
     positionSummaryChatPopover();
     summaryChatPopover.classList.add('visible');
+    bringFloatingWindowToFront(summaryChatPopover);
     updateSummaryChatExpertButtonState();
     renderSummaryChatMessages();
     setTimeout(() => summaryChatPopover.querySelector('.summary-chat-input')?.focus(), 50);
@@ -3018,6 +3069,7 @@
     resetSummaryChatSession();
     rawResponse = selectionText;
     originalResponse = selectionText;
+    summarySourceUrl = window.location.href;
     responseCache = {};
 
     const finish = () => {
@@ -3028,6 +3080,7 @@
         renderStandaloneFastChatNeedKey();
         positionSummaryChatPopover();
         summaryChatPopover.classList.add('visible');
+        bringFloatingWindowToFront(summaryChatPopover);
         return;
       }
       summaryChatMessages = [];
@@ -3045,6 +3098,7 @@
       if (newThreadBtn) newThreadBtn.disabled = false;
       positionSummaryChatPopover();
       summaryChatPopover.classList.add('visible');
+      bringFloatingWindowToFront(summaryChatPopover);
       renderSummaryChatMessages();
       setTimeout(() => input?.focus(), 50);
     };
@@ -3100,6 +3154,7 @@
               provider: currentProvider,
               apiKey: getActiveApiKey(),
               summaryContext: context,
+              sourceUrl: summarySourceUrl,
               messages: summaryChatMessages,
               advisorPersona: summaryChatAdvisorPersona,
             },
@@ -3343,6 +3398,9 @@
       wordExplainPopover.classList.remove('visible');
     });
 
+    modal.addEventListener('mousedown', () => bringFloatingWindowToFront(modal));
+    wordExplainPopover.addEventListener('mousedown', () => bringFloatingWindowToFront(wordExplainPopover));
+
     initExplainDrag(wordExplainPopover, wordExplainPopover.querySelector('.word-explain-popover-header'));
     initExplainResize(wordExplainPopover);
 
@@ -3397,6 +3455,7 @@
       </div>
     `;
     modalShadow.appendChild(summaryChatPopover);
+    summaryChatPopover.addEventListener('mousedown', () => bringFloatingWindowToFront(summaryChatPopover));
 
     bindSummaryChatExpertOutsideClose();
 
@@ -3482,6 +3541,7 @@
       const copyBtn = summaryChatPopover.querySelector('.summary-chat-copy-json');
       const payload = {
         summaryContext: rawResponse || '',
+        sourceUrl: summarySourceUrl || '',
         messages: summaryChatMessages.map((m) => ({
           role: m.role,
           content: m.content,
@@ -3636,6 +3696,7 @@
     minimizedPanels.delete('summary');
     if (minimizedDock) updateMinimizedDock();
     modal.style.display = 'flex';
+    bringFloatingWindowToFront(modal);
   }
 
   function hideModal() {
@@ -4031,6 +4092,7 @@
       try {
         if (!isContextValid())
           throw new Error('Extension was reloaded. Please refresh the page.');
+        const sourceUrlForSummary = inputMode === 'url' ? urlInput.value.trim() : window.location.href;
         const result = await new Promise((resolve, reject) => {
           try {
             chrome.runtime.sendMessage(messagePayload, (resp) => {
@@ -4052,6 +4114,7 @@
         clearSummaryChatExpertAdvisorsUi();
         rawResponse = result;
         originalResponse = result;
+        summarySourceUrl = sourceUrlForSummary;
         responseCache['original'] = result;
         responseContent.innerHTML = parseMarkdown(result);
         summaryChatMessages = [];
@@ -4676,10 +4739,13 @@
         minimizedPanels.delete('explain');
         if (minimizedDock) updateMinimizedDock();
         wordExplainPopover.classList.add('visible');
+        bringFloatingWindowToFront(wordExplainPopover);
 
         (async () => {
           try {
             if (!isContextValid()) throw new Error('Extension was reloaded. Please refresh the page.');
+            const explainContext = buildExplainContextFromSummaryAndChat();
+            if (!explainContext.trim()) throw new Error('No summary context available for explain.');
             const result = await new Promise((resolve, reject) => {
               try {
                 chrome.runtime.sendMessage(
@@ -4688,7 +4754,7 @@
                     provider: currentProvider,
                     apiKey: getActiveApiKey(),
                     term,
-                    context: rawResponse,
+                    context: explainContext,
                   },
                   (resp) => {
                     if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
