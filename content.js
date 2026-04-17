@@ -2400,6 +2400,9 @@
   let summaryChatImageViewerOpen = false;
   /** Last chat window geometry while main modal is open (cleared when main modal closes). */
   let summaryChatRect = null;
+  let explainRect = null;
+  let explainTerm = '';
+  let explainBodyHtml = '';
   /** True when chat was opened from context menu "Fast Chat" without the main modal. */
   let fastChatStandaloneMode = false;
   let lastContextMenuPos = { x: 100, y: 100 };
@@ -2442,6 +2445,13 @@
       summaryChatAdvisors: [],
       summaryChatAdvisorPersona: null,
       summaryChatAdvisorSelectedValue: '',
+      minimizedPanels: [],
+      summaryChatRect: null,
+      explainRect: null,
+      explainTerm: '',
+      explainBodyHtml: '',
+      chatVisible: false,
+      explainVisible: false,
     };
   }
 
@@ -2480,6 +2490,15 @@
     summaryChatAdvisors = cloneJsonSafe(page.summaryChatAdvisors || [], []);
     summaryChatAdvisorPersona = cloneJsonSafe(page.summaryChatAdvisorPersona, null);
     summaryChatAdvisorSelectedValue = page.summaryChatAdvisorSelectedValue || '';
+    minimizedPanels = new Set(
+      Array.isArray(page.minimizedPanels)
+        ? page.minimizedPanels.filter((panel) => MINIMIZED_PANEL_ORDER.includes(panel))
+        : []
+    );
+    summaryChatRect = cloneJsonSafe(page.summaryChatRect, null);
+    explainRect = cloneJsonSafe(page.explainRect, null);
+    explainTerm = page.explainTerm || '';
+    explainBodyHtml = page.explainBodyHtml || '';
   }
 
   function saveActiveSourcePageState() {
@@ -2494,11 +2513,78 @@
     page.summaryChatAdvisors = cloneJsonSafe(summaryChatAdvisors || [], []);
     page.summaryChatAdvisorPersona = cloneJsonSafe(summaryChatAdvisorPersona, null);
     page.summaryChatAdvisorSelectedValue = summaryChatAdvisorSelectedValue || '';
+    page.minimizedPanels = Array.from(minimizedPanels);
+    page.summaryChatRect = cloneJsonSafe(summaryChatRect, null);
+    page.explainRect = cloneJsonSafe(explainRect, null);
+    page.explainTerm = explainTerm || '';
+    page.explainBodyHtml = explainBodyHtml || '';
+    page.chatVisible = !!(
+      summaryChatPopover &&
+      summaryChatPopover.classList.contains('visible') &&
+      !minimizedPanels.has('chat')
+    );
+    page.explainVisible = !!(
+      wordExplainPopover &&
+      wordExplainPopover.classList.contains('visible') &&
+      !minimizedPanels.has('explain')
+    );
   }
 
   function saveActiveSourcePageStateIfMainModal() {
     if (fastChatStandaloneMode) return;
     saveActiveSourcePageState();
+  }
+
+  function persistExplainLayout() {
+    if (!wordExplainPopover) return;
+    const rect = wordExplainPopover.getBoundingClientRect();
+    explainRect = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
+  function applyActivePageFloatingWindowsState() {
+    if (!summaryChatPopover || !wordExplainPopover) return;
+    const page = getActiveSourcePage();
+    const chatVisible = !!page.chatVisible;
+    const explainVisibleOnPage = !!page.explainVisible;
+
+    if (chatVisible && !minimizedPanels.has('chat')) {
+      positionSummaryChatPopover();
+      summaryChatPopover.classList.add('visible');
+      renderSummaryChatMessages();
+      updateSummaryChatExpertButtonState();
+    } else {
+      closeSummaryChatImageViewer();
+      summaryChatPopover.classList.remove('visible');
+    }
+
+    if (minimizedPanels.has('chat')) {
+      summaryChatPopover.classList.remove('visible');
+    }
+
+    if (minimizedPanels.has('explain')) {
+      wordExplainPopover.classList.remove('visible');
+    } else if (explainVisibleOnPage && explainTerm) {
+      const termEl = wordExplainPopover.querySelector('.word-explain-popover-term');
+      const bodyEl = wordExplainPopover.querySelector('.word-explain-popover-body');
+      if (termEl) termEl.textContent = explainTerm;
+      if (bodyEl) bodyEl.innerHTML = explainBodyHtml || '';
+      if (explainRect) {
+        wordExplainPopover.style.left = `${explainRect.left}px`;
+        wordExplainPopover.style.top = `${explainRect.top}px`;
+        wordExplainPopover.style.width = `${explainRect.width}px`;
+        wordExplainPopover.style.height = `${explainRect.height}px`;
+      }
+      wordExplainPopover.classList.add('visible');
+    } else {
+      wordExplainPopover.classList.remove('visible');
+    }
+
+    updateMinimizedDock();
   }
 
   function resetSummaryChatSession() {
@@ -3048,11 +3134,13 @@
     } else if (key === 'explain') {
       wordExplainPopover.classList.add('visible');
       bringFloatingWindowToFront(wordExplainPopover);
+      saveActiveSourcePageStateIfMainModal();
     } else if (key === 'chat') {
       positionSummaryChatPopover();
       summaryChatPopover.classList.add('visible');
       bringFloatingWindowToFront(summaryChatPopover);
       setTimeout(() => summaryChatPopover.querySelector('.summary-chat-input')?.focus(), 50);
+      saveActiveSourcePageStateIfMainModal();
     }
   }
 
@@ -3067,6 +3155,7 @@
       minimizedPanels.delete('explain');
       if (wordExplainPopover) wordExplainPopover.classList.remove('visible');
       updateMinimizedDock();
+      saveActiveSourcePageStateIfMainModal();
       return;
     }
     if (key === 'chat') {
@@ -3074,6 +3163,7 @@
       fastChatStandaloneMode = false;
       if (summaryChatPopover) summaryChatPopover.classList.remove('visible');
       updateMinimizedDock();
+      saveActiveSourcePageStateIfMainModal();
     }
   }
 
@@ -3084,9 +3174,11 @@
   }
 
   function minimizeExplainPanel() {
+    persistExplainLayout();
     wordExplainPopover.classList.remove('visible');
     minimizedPanels.add('explain');
     updateMinimizedDock();
+    saveActiveSourcePageStateIfMainModal();
   }
 
   function minimizeChatPanel() {
@@ -3095,6 +3187,7 @@
     summaryChatPopover.classList.remove('visible');
     minimizedPanels.add('chat');
     updateMinimizedDock();
+    saveActiveSourcePageStateIfMainModal();
   }
 
   function persistSummaryChatLayout() {
@@ -3320,6 +3413,7 @@
     updateSummaryChatExpertButtonState();
     renderSummaryChatMessages();
     setTimeout(() => summaryChatPopover.querySelector('.summary-chat-input')?.focus(), 50);
+    saveActiveSourcePageStateIfMainModal();
   }
 
   function renderStandaloneFastChatNeedKey() {
@@ -3687,6 +3781,7 @@
       minimizedPanels.delete('explain');
       if (minimizedDock) updateMinimizedDock();
       wordExplainPopover.classList.remove('visible');
+      saveActiveSourcePageStateIfMainModal();
     });
 
     modal.addEventListener('mousedown', () => bringFloatingWindowToFront(modal));
@@ -3833,6 +3928,7 @@
       if (minimizedDock) updateMinimizedDock();
       closeSummaryChatImageViewer();
       summaryChatPopover.classList.remove('visible');
+      saveActiveSourcePageStateIfMainModal();
     });
 
     summaryChatPopover.querySelector('.summary-chat-copy-json').addEventListener('click', () => {
@@ -4798,6 +4894,8 @@
       updateSummaryChatExpertButtonState();
     }
 
+    applyActivePageFloatingWindowsState();
+
     setTimeout(() => {
       if (inputMode === 'text') textarea.focus();
       else urlInput.focus();
@@ -4868,7 +4966,10 @@
     });
 
     document.addEventListener('mouseup', () => {
+      if (!dragging) return;
       dragging = false;
+      persistExplainLayout();
+      saveActiveSourcePageStateIfMainModal();
     });
   }
 
@@ -4936,7 +5037,10 @@
     });
 
     document.addEventListener('mouseup', () => {
+      if (!resizeDir) return;
       resizeDir = null;
+      persistExplainLayout();
+      saveActiveSourcePageStateIfMainModal();
     });
   }
 
@@ -5232,17 +5336,21 @@
         wordExplainPopover.style.top = pTop + 'px';
         wordExplainPopover.style.width = '340px';
         wordExplainPopover.style.height = '420px';
-        termEl.textContent = `"${term}"`;
-        bodyEl.innerHTML = `
+        explainTerm = `"${term}"`;
+        explainBodyHtml = `
           <div class="word-explain-loading">
             <div class="word-explain-spinner"></div>
             <span>Explaining...</span>
           </div>
         `;
+        termEl.textContent = explainTerm;
+        bodyEl.innerHTML = explainBodyHtml;
         minimizedPanels.delete('explain');
         if (minimizedDock) updateMinimizedDock();
         wordExplainPopover.classList.add('visible');
         bringFloatingWindowToFront(wordExplainPopover);
+        persistExplainLayout();
+        saveActiveSourcePageStateIfMainModal();
 
         (async () => {
           try {
@@ -5269,11 +5377,15 @@
               } catch (err) { reject(err); }
             });
             if (wordExplainPopover.classList.contains('visible')) {
-              bodyEl.innerHTML = parseMarkdown(result);
+              explainBodyHtml = parseMarkdown(result);
+              bodyEl.innerHTML = explainBodyHtml;
+              saveActiveSourcePageStateIfMainModal();
             }
           } catch (err) {
             if (wordExplainPopover.classList.contains('visible')) {
-              bodyEl.innerHTML = `<div class="error-text">Error: ${escapeHtml(err.message)}</div>`;
+              explainBodyHtml = `<div class="error-text">Error: ${escapeHtml(err.message)}</div>`;
+              bodyEl.innerHTML = explainBodyHtml;
+              saveActiveSourcePageStateIfMainModal();
             }
           }
         })();
