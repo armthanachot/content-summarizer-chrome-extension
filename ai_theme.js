@@ -42,6 +42,7 @@
     'messageUserStart',
     'messageUserEnd',
     'inputBackground',
+    'chatInputText',
     'sendButtonStart',
     'sendButtonEnd',
   ];

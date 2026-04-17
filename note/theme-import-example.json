@@ -35,6 +35,7 @@
     "messageUserStart": "#29B6F6",
     "messageUserEnd": "#0288D1",
     "inputBackground": "#1A3A4F",
+    "chatInputText": "#EAF7FF",
     "sendButtonStart": "#29B6F6",
     "sendButtonEnd": "#0277BD"
   }

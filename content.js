@@ -64,6 +64,7 @@
       messageUserStart: '#1D4ED8',
       messageUserEnd: '#1E3A8A',
       inputBackground: '#1E293B',
+      chatInputText: '#F1F5F9',
       sendButtonStart: '#2563EB',
       sendButtonEnd: '#1D4ED8',
     },
@@ -116,6 +117,7 @@
         { key: 'messageUserStart', label: 'User bubble gradient start' },
         { key: 'messageUserEnd', label: 'User bubble gradient end' },
         { key: 'inputBackground', label: 'Chat input background' },
+        { key: 'chatInputText', label: 'Chat input text' },
         { key: 'sendButtonStart', label: 'Send button gradient start' },
         { key: 'sendButtonEnd', label: 'Send button gradient end' },
       ],
@@ -167,6 +169,7 @@
           messageUserStart: '#FF7043',
           messageUserEnd: '#D84315',
           inputBackground: '#3C2B27',
+          chatInputText: '#FFF3EE',
           sendButtonStart: '#FF7043',
           sendButtonEnd: '#E64A19',
         },
@@ -212,6 +215,7 @@
           messageUserStart: '#29B6F6',
           messageUserEnd: '#0288D1',
           inputBackground: '#1A3A4F',
+          chatInputText: '#EAF7FF',
           sendButtonStart: '#29B6F6',
           sendButtonEnd: '#0277BD',
         },
@@ -809,6 +813,22 @@
       transform: rotate(45deg);
       transform-origin: center;
       pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .theme-ai-designer-btn.loading img {
+      opacity: 0;
+    }
+
+    .theme-ai-designer-btn.loading::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(46, 125, 50, 0.25);
+      border-top-color: #2E7D32;
+      border-radius: 50%;
+      animation: cs-spin 0.7s linear infinite;
     }
 
     .theme-ai-name {
@@ -823,8 +843,33 @@
 
     .modal.theme-busy {
       pointer-events: none !important;
-      opacity: 0.72;
-      filter: saturate(0.85);
+      position: relative;
+    }
+
+    .modal.theme-busy::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 40;
+    }
+
+    .modal.theme-busy::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 28px;
+      height: 28px;
+      margin-left: -14px;
+      margin-top: -14px;
+      border: 3px solid rgba(255, 255, 255, 0.55);
+      border-top-color: #2E7D32;
+      border-radius: 50%;
+      animation: cs-spin 0.8s linear infinite;
+      z-index: 41;
     }
 
     /* ===== Input Panel ===== */
@@ -2552,7 +2597,7 @@
       line-height: 1.45;
       resize: vertical;
       background: transparent;
-      color: #f1f5f9;
+      color: var(--cs-chat-input-text, #F1F5F9);
       outline: none;
       margin: 0;
     }
@@ -3102,7 +3147,7 @@
   let fastChatStandaloneMode = false;
   let lastContextMenuPos = { x: 100, y: 100 };
   const INIT_W = 560;
-  const INIT_H = 500;
+  const INIT_H = 540;
   const IMAGE_MIME_ALLOWLIST = new Set([
     'image/png',
     'image/jpeg',
@@ -3179,6 +3224,7 @@
       '--cs-chat-user-start': chat.messageUserStart,
       '--cs-chat-user-end': chat.messageUserEnd,
       '--cs-chat-input-bg': chat.inputBackground,
+      '--cs-chat-input-text': chat.chatInputText,
       '--cs-chat-send-start': chat.sendButtonStart,
       '--cs-chat-send-end': chat.sendButtonEnd,
     };
@@ -5204,6 +5250,10 @@
     function setThemeBusy(locked) {
       if (!modal) return;
       modal.classList.toggle('theme-busy', !!locked);
+      if (aiDesignerBtn) {
+        aiDesignerBtn.disabled = !!locked;
+        aiDesignerBtn.classList.toggle('loading', !!locked);
+      }
     }
 
     presetSelect.innerHTML = THEME_PRESETS.map((preset) => {
