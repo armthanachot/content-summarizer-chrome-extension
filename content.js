@@ -943,6 +943,83 @@
       font-weight: 600;
     }
 
+    .summary-action-with-submenu {
+      position: relative;
+    }
+
+    .summary-action-parent {
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .summary-action-parent .summary-action-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .summary-action-submenu-caret {
+      font-size: 12px;
+      color: #2E7D32;
+      opacity: 0.85;
+      transition: transform 0.15s ease;
+    }
+
+    .summary-translate-submenu {
+      background: #F8FCF8;
+      border-top: 1px solid #DCEFD8;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.18s ease;
+    }
+
+    .summary-action-with-submenu.expanded .summary-translate-submenu {
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .summary-action-with-submenu.expanded .summary-action-submenu-caret {
+      transform: rotate(90deg);
+    }
+
+    .summary-translate-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px 8px 28px;
+      font-size: 13px;
+      font-family: inherit;
+      color: #2E3A2E;
+      cursor: pointer;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      transition: background 0.15s;
+    }
+
+    .summary-translate-option:hover:not(:disabled) {
+      background: #E8F5E9;
+    }
+
+    .summary-translate-option + .summary-translate-option {
+      border-top: 1px solid #E6F2E4;
+    }
+
+    .summary-translate-option .flag {
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    .summary-translate-option .lang-name {
+      font-weight: 500;
+    }
+
+    .summary-translate-submenu-inner {
+      overflow-y: auto;
+      max-height: 220px;
+    }
+
     /* ===== Translate ===== */
 
     @keyframes csDropIn {
@@ -4854,20 +4931,41 @@
       const popover = document.createElement('div');
       popover.className = 'summary-actions-popover';
 
-      const translateLabel = document.createElement('span');
-      translateLabel.className = 'lang-name';
-      translateLabel.textContent = 'Translate';
+      const translateItemWrap = document.createElement('div');
+      translateItemWrap.className = 'summary-action-with-submenu';
       const translateItem = document.createElement('button');
-      translateItem.className = 'summary-action-item';
+      translateItem.className = 'summary-action-item summary-action-parent';
       translateItem.type = 'button';
-      translateItem.appendChild(translateImg.cloneNode(true));
-      translateItem.appendChild(translateLabel);
       translateItem.disabled = isLoading || !originalResponse;
+      const translateLabel = document.createElement('span');
+      translateLabel.className = 'summary-action-label';
+      translateLabel.appendChild(translateImg.cloneNode(true));
+      const translateText = document.createElement('span');
+      translateText.className = 'lang-name';
+      translateText.textContent = 'Translate';
+      translateLabel.appendChild(translateText);
+      const translateCaret = document.createElement('span');
+      translateCaret.className = 'summary-action-submenu-caret';
+      translateCaret.textContent = '▸';
+      translateItem.appendChild(translateLabel);
+      translateItem.appendChild(translateCaret);
       translateItem.addEventListener('click', (e) => {
         e.stopPropagation();
-        buildTranslateMenu(popover);
+        if (translateItem.disabled) return;
+        translateItemWrap.classList.toggle('expanded');
       });
-      popover.appendChild(translateItem);
+      translateItemWrap.appendChild(translateItem);
+      const translateSubmenu = document.createElement('div');
+      translateSubmenu.className = 'summary-translate-submenu';
+      const translateSubmenuInner = document.createElement('div');
+      translateSubmenuInner.className = 'summary-translate-submenu-inner';
+      LANGUAGES.forEach((lang) => {
+        const option = createTranslateMenuOption(lang);
+        translateSubmenuInner.appendChild(option);
+      });
+      translateSubmenu.appendChild(translateSubmenuInner);
+      translateItemWrap.appendChild(translateSubmenu);
+      popover.appendChild(translateItemWrap);
 
       const downloadLabel = document.createElement('span');
       downloadLabel.className = 'lang-name';
@@ -4904,82 +5002,79 @@
       actionsMenuOpen = true;
     }
 
-    function buildTranslateMenu(hostPopover) {
-      hostPopover.innerHTML = '';
-      LANGUAGES.forEach((lang) => {
-        const option = document.createElement('button');
-        option.className = 'summary-action-item';
-        option.type = 'button';
-        option.innerHTML = `<span class="flag">${lang.flag}</span><span class="lang-name">${lang.name}</span>`;
-        option.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          closeSummaryActionsMenu();
+    function createTranslateMenuOption(lang) {
+      const option = document.createElement('button');
+      option.className = 'summary-translate-option';
+      option.type = 'button';
+      option.innerHTML = `<span class="flag">${lang.flag}</span><span class="lang-name">${lang.name}</span>`;
+      option.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        closeSummaryActionsMenu();
 
-          if (responseCache[lang.code]) {
-            clearSummaryChatExpertAdvisorsUi();
-            rawResponse = responseCache[lang.code];
-            responseContent.innerHTML = parseMarkdown(rawResponse);
-            saveActiveSourcePageState();
-            summaryActionsMenuBtn.disabled = false;
-            return;
-          }
+        if (responseCache[lang.code]) {
+          clearSummaryChatExpertAdvisorsUi();
+          rawResponse = responseCache[lang.code];
+          responseContent.innerHTML = parseMarkdown(rawResponse);
+          saveActiveSourcePageState();
+          summaryActionsMenuBtn.disabled = false;
+          return;
+        }
 
-          setUILocked(true);
-          responseContent.innerHTML = `
-            <div class="loading-state">
-              <div class="spinner"></div>
-              <span>Translating to ${lang.flag} ${lang.name}...</span>
-            </div>
-          `;
+        setUILocked(true);
+        responseContent.innerHTML = `
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <span>Translating to ${lang.flag} ${lang.name}...</span>
+          </div>
+        `;
 
-          try {
-            if (!isContextValid())
-              throw new Error(
-                'Extension was reloaded. Please refresh the page.'
-              );
-            const result = await new Promise((resolve, reject) => {
-              try {
-                chrome.runtime.sendMessage(
-                  {
-                    type: 'translate',
-                    provider: currentProvider,
-                    apiKey: getActiveApiKey(),
-                    content: originalResponse,
-                    targetLang: lang.name,
-                  },
-                  (resp) => {
-                    if (chrome.runtime.lastError) {
-                      reject(new Error(chrome.runtime.lastError.message));
-                      return;
-                    }
-                    if (!resp) {
-                      reject(new Error('No response from background script.'));
-                      return;
-                    }
-                    if (resp.success) resolve(resp.data);
-                    else reject(new Error(resp.error));
+        try {
+          if (!isContextValid())
+            throw new Error(
+              'Extension was reloaded. Please refresh the page.'
+            );
+          const result = await new Promise((resolve, reject) => {
+            try {
+              chrome.runtime.sendMessage(
+                {
+                  type: 'translate',
+                  provider: currentProvider,
+                  apiKey: getActiveApiKey(),
+                  content: originalResponse,
+                  targetLang: lang.name,
+                },
+                (resp) => {
+                  if (chrome.runtime.lastError) {
+                    reject(new Error(chrome.runtime.lastError.message));
+                    return;
                   }
-                );
-              } catch (e2) {
-                reject(e2);
-              }
-            });
-            clearSummaryChatExpertAdvisorsUi();
-            rawResponse = result;
-            responseCache[lang.code] = result;
-            responseContent.innerHTML = parseMarkdown(result);
-            saveActiveSourcePageState();
-          } catch (err) {
-            responseContent.innerHTML = `<div class="error-text">Translation error: ${escapeHtml(err.message)}</div>`;
-          } finally {
-            setUILocked(false);
-            if (inputMode === 'url' && urlDisplay.style.display !== 'none') {
-              urlInput.disabled = true;
+                  if (!resp) {
+                    reject(new Error('No response from background script.'));
+                    return;
+                  }
+                  if (resp.success) resolve(resp.data);
+                  else reject(new Error(resp.error));
+                }
+              );
+            } catch (e2) {
+              reject(e2);
             }
+          });
+          clearSummaryChatExpertAdvisorsUi();
+          rawResponse = result;
+          responseCache[lang.code] = result;
+          responseContent.innerHTML = parseMarkdown(result);
+          saveActiveSourcePageState();
+        } catch (err) {
+          responseContent.innerHTML = `<div class="error-text">Translation error: ${escapeHtml(err.message)}</div>`;
+        } finally {
+          setUILocked(false);
+          if (inputMode === 'url' && urlDisplay.style.display !== 'none') {
+            urlInput.disabled = true;
           }
-        });
-        hostPopover.appendChild(option);
+        }
       });
+      return option;
     }
 
     function setUILocked(locked) {
