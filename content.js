@@ -811,6 +811,16 @@
       margin-top: 4px;
     }
 
+    .theme-tools-secondary {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 8px;
+      min-height: 18px;
+      position: relative;
+    }
+
     .theme-preset-select {
       min-width: 170px;
       border: 1px solid #B6D9B7;
@@ -839,6 +849,18 @@
       border-color: #81C784;
     }
 
+    .theme-preview-btn {
+      border: 1px solid transparent;
+      font-weight: 600;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+    }
+
+    .theme-preview-btn:hover {
+      filter: brightness(1.04);
+      transform: translateY(-1px);
+      border-color: transparent;
+    }
+
     .theme-import-input {
       display: none;
     }
@@ -853,27 +875,34 @@
     .theme-ai-designer-wrap {
       display: inline-flex;
       flex-direction: column;
-      align-items: center;
-      gap: 3px;
+      align-items: flex-end;
+      gap: 4px;
+      min-height: 48px;
     }
 
     .theme-ai-designer-btn {
-      width: 38px;
-      height: 38px;
-      padding: 0;
+      height: 32px;
+      padding: 0 10px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      position: relative;
     }
 
     .theme-ai-designer-btn img {
-      width: 24px;
-      height: 24px;
+      width: 16px;
+      height: 16px;
       display: block;
       transform: rotate(45deg);
       transform-origin: center;
       pointer-events: none;
       transition: opacity 0.2s;
+      margin-right: 6px;
+    }
+
+    .theme-ai-designer-btn span {
+      font-size: 12px;
+      font-weight: 600;
     }
 
     .theme-ai-designer-btn.loading img {
@@ -892,13 +921,196 @@
     }
 
     .theme-ai-name {
-      min-height: 14px;
-      max-width: 92px;
-      font-size: 10px;
+      min-height: 16px;
+      max-width: 220px;
+      font-size: 11px;
       color: #2E7D32;
-      text-align: center;
+      text-align: right;
       line-height: 1.2;
       word-break: break-word;
+    }
+
+    .theme-preview-window {
+      position: fixed;
+      width: min(700px, calc(100vw - 36px));
+      height: min(560px, calc(100vh - 36px));
+      min-width: 420px;
+      min-height: 320px;
+      border-radius: 12px;
+      border: 1px solid #B6D9B7;
+      background: #FFFFFF;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+      display: none;
+      flex-direction: column;
+      z-index: 40;
+      overflow: hidden;
+      pointer-events: auto;
+    }
+
+    .theme-preview-window.visible {
+      display: flex;
+    }
+
+    .theme-preview-window-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #E5EFE5;
+      background: #F7FBF7;
+      cursor: move;
+      user-select: none;
+    }
+
+    .theme-preview-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #355A35;
+    }
+
+    .theme-preview-close {
+      border: 1px solid #BED9BF;
+      border-radius: 8px;
+      width: 28px;
+      height: 28px;
+      background: #FFFFFF;
+      color: #355A35;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .theme-preview-window-body {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .theme-preview-viewport {
+      padding: 10px;
+      background: #F5FAF5;
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .theme-preview-slide {
+      animation: themePreviewSlideIn 0.18s ease-out;
+      transform-origin: center top;
+    }
+
+    .theme-preview-surface {
+      border: 1px solid #D8EAD9;
+      border-radius: 10px;
+      overflow: hidden;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .theme-preview-surface-header {
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .theme-preview-summary-source {
+      font-size: 11px;
+      color: #4A654A;
+      background: #FFFFFF;
+      padding: 8px 10px;
+      border-bottom: 1px solid #E5EFE5;
+      word-break: break-all;
+    }
+
+    .theme-preview-summary-body,
+    .theme-preview-explain-body,
+    .theme-preview-chat-body {
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .theme-preview-chat-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .theme-preview-chat-conversation {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 9px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .theme-preview-chat-conversation h5 {
+      font-size: 11px;
+      margin-bottom: 8px;
+      opacity: 0.9;
+    }
+
+    .theme-preview-chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .theme-preview-chat-user-wrap {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .theme-preview-chat-user {
+      border-radius: 10px;
+      padding: 7px 9px;
+      max-width: 88%;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .theme-preview-chat-assistant {
+      border-radius: 10px;
+      padding: 8px 9px;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .theme-preview-dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 12px 12px;
+      border-top: 1px solid #E5EFE5;
+      background: #FFFFFF;
+    }
+
+    .theme-preview-dot {
+      width: 9px;
+      height: 9px;
+      border: none;
+      border-radius: 50%;
+      background: #BFD8C0;
+      cursor: pointer;
+      transition: transform 0.12s ease, background-color 0.18s ease;
+    }
+
+    .theme-preview-dot.active {
+      background: #4C8D4F;
+      transform: scale(1.15);
+    }
+
+    @keyframes themePreviewSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.99);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
     }
 
     .modal.theme-busy {
@@ -3250,11 +3462,14 @@
   let lastGeneratedThemeName = '';
   /** Last chat window geometry while main modal is open (cleared when main modal closes). */
   let summaryChatRect = null;
+  let themePreviewRect = null;
+  let themePreviewSlideIndex = 0;
   let explainRect = null;
   let explainTerm = '';
   let explainBodyHtml = '';
   /** True when chat was opened from context menu "Fast Chat" without the main modal. */
   let fastChatStandaloneMode = false;
+  let themePreviewModal = null;
   let lastContextMenuPos = { x: 100, y: 100 };
   const INIT_W = 560;
   const INIT_H = 540;
@@ -4121,6 +4336,7 @@
   }
 
   function minimizeSummaryPanel() {
+    closeThemePreviewModal();
     minimizedPanels.add('summary');
     modal.style.display = 'none';
     updateMinimizedDock();
@@ -4177,6 +4393,41 @@
     summaryChatPopover.style.height = h + 'px';
     summaryChatPopover.style.left = Math.max(12, (window.innerWidth - w) / 2) + 'px';
     summaryChatPopover.style.top = Math.max(12, (window.innerHeight - h) / 2) + 'px';
+  }
+
+  function persistThemePreviewLayout() {
+    if (!themePreviewModal) return;
+    const rect = themePreviewModal.getBoundingClientRect();
+    themePreviewRect = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
+  function positionThemePreviewModal() {
+    if (!themePreviewModal) return;
+    if (themePreviewRect) {
+      themePreviewModal.style.width = `${themePreviewRect.width}px`;
+      themePreviewModal.style.height = `${themePreviewRect.height}px`;
+      themePreviewModal.style.left = `${themePreviewRect.left}px`;
+      themePreviewModal.style.top = `${themePreviewRect.top}px`;
+      return;
+    }
+    const w = Math.min(700, window.innerWidth - 36);
+    const h = Math.min(560, window.innerHeight - 36);
+    themePreviewModal.style.width = `${w}px`;
+    themePreviewModal.style.height = `${h}px`;
+    themePreviewModal.style.left = `${Math.max(12, (window.innerWidth - w) / 2 + 36)}px`;
+    themePreviewModal.style.top = `${Math.max(12, (window.innerHeight - h) / 2 - 24)}px`;
+  }
+
+  function closeThemePreviewModal() {
+    if (!themePreviewModal) return;
+    persistThemePreviewLayout();
+    themePreviewModal.classList.remove('visible');
+    themePreviewModal.setAttribute('aria-hidden', 'true');
   }
 
   function openSummaryChatImageViewer(imageSrc, altText) {
@@ -4288,7 +4539,7 @@
   }
 
   function getVisibleFloatingWindowsSorted() {
-    const windows = [modal, wordExplainPopover, summaryChatPopover, minimizedDock]
+    const windows = [modal, wordExplainPopover, summaryChatPopover, themePreviewModal, minimizedDock]
       .filter(Boolean)
       .filter((el) => {
         if (el === minimizedDock) return minimizedPanels.size > 0;
@@ -5067,6 +5318,29 @@
       }
     });
 
+    // ===================== Theme preview window =====================
+
+    themePreviewModal = document.createElement('div');
+    themePreviewModal.className = 'theme-preview-window';
+    themePreviewModal.setAttribute('aria-hidden', 'true');
+    themePreviewModal.innerHTML = `
+      <div class="theme-preview-window-header">
+        <span class="theme-preview-title">Theme Preview</span>
+        <button type="button" class="theme-preview-close" aria-label="Close preview">✕</button>
+      </div>
+      <div class="theme-preview-window-body">
+        <div class="theme-preview-viewport"></div>
+        <div class="theme-preview-dots"></div>
+      </div>
+    `;
+    modalShadow.appendChild(themePreviewModal);
+    themePreviewModal.addEventListener('mousedown', () => bringFloatingWindowToFront(themePreviewModal));
+    themePreviewModal
+      .querySelector('.theme-preview-close')
+      .addEventListener('click', () => closeThemePreviewModal());
+    initExplainDrag(themePreviewModal, themePreviewModal.querySelector('.theme-preview-window-header'));
+    initExplainResize(themePreviewModal);
+
     initSummaryChatDrag();
     initSummaryChatEdgeResize();
 
@@ -5134,6 +5408,7 @@
 
   function hideModal() {
     modal.style.display = 'none';
+    closeThemePreviewModal();
     fastChatStandaloneMode = false;
     resetSummaryChatSession();
   }
@@ -5274,17 +5549,21 @@
           <select class="theme-preset-select"></select>
           <button type="button" class="theme-toolbar-btn theme-apply-preset-btn">Apply Preset</button>
           <button type="button" class="theme-toolbar-btn theme-reset-btn">Reset Default</button>
+          <button type="button" class="theme-toolbar-btn theme-preview-btn">Theme Preview</button>
           <button type="button" class="theme-toolbar-btn theme-import-btn">Import JSON</button>
           <button type="button" class="theme-toolbar-btn theme-export-btn">Export JSON</button>
+          <input type="file" class="theme-import-input" accept="application/json,.json" />
+        </div>
+        <div class="theme-tools-secondary">
+          <div class="theme-status" aria-live="polite"></div>
           <div class="theme-ai-designer-wrap">
             <button type="button" class="theme-toolbar-btn theme-ai-designer-btn" title="AI designer" aria-label="AI designer">
               <img alt="" />
+              <span>AI Designer</span>
             </button>
             <div class="theme-ai-name"></div>
           </div>
-          <input type="file" class="theme-import-input" accept="application/json,.json" />
         </div>
-        <div class="theme-status" aria-live="polite"></div>
       </div>
     `;
     modalBody.appendChild(view);
@@ -5351,11 +5630,14 @@
           if (valueEl) valueEl.textContent = nextColor;
         });
       });
+      syncPreviewButtonStyle();
+      renderThemePreviewSlide(themePreviewSlideIndex);
     }
 
     const presetSelect = view.querySelector('.theme-preset-select');
     const applyPresetBtn = view.querySelector('.theme-apply-preset-btn');
     const resetBtn = view.querySelector('.theme-reset-btn');
+    const previewBtn = view.querySelector('.theme-preview-btn');
     const importBtn = view.querySelector('.theme-import-btn');
     const exportBtn = view.querySelector('.theme-export-btn');
     const importInput = view.querySelector('.theme-import-input');
@@ -5372,9 +5654,73 @@
       aiNameEl.textContent = lastGeneratedThemeName || '';
     }
 
+    function syncPreviewButtonStyle() {
+      if (!previewBtn) return;
+      previewBtn.style.background = `linear-gradient(135deg, ${draftTheme.summary.headerStart}, ${draftTheme.summary.headerEnd})`;
+      previewBtn.style.color = draftTheme.summary.headerText;
+      previewBtn.style.borderColor = 'transparent';
+    }
+
+    function getThemePreviewSlides() {
+      if (!self.ThemePreview || typeof self.ThemePreview.buildSlides !== 'function') return [];
+      return self.ThemePreview.buildSlides(sanitizeThemeConfig(draftTheme), parseMarkdown);
+    }
+
+    function renderThemePreviewSlide(nextIndex) {
+      if (!themePreviewModal) return;
+      const slides = getThemePreviewSlides();
+      if (!slides.length) {
+        closeThemePreviewModal();
+        setStatus('Theme preview module unavailable.', true);
+        return;
+      }
+      const safeIndex = Math.min(Math.max(nextIndex, 0), slides.length - 1);
+      themePreviewSlideIndex = safeIndex;
+      const current = slides[themePreviewSlideIndex];
+      const dots = slides
+        .map((slide, idx) => {
+          const active = idx === themePreviewSlideIndex ? 'active' : '';
+          return `<button type="button" class="theme-preview-dot ${active}" data-preview-index="${idx}" aria-label="Show ${escapeHtml(slide.title)}"></button>`;
+        })
+        .join('');
+      const viewport = themePreviewModal.querySelector('.theme-preview-viewport');
+      const dotsWrap = themePreviewModal.querySelector('.theme-preview-dots');
+      const titleEl = themePreviewModal.querySelector('.theme-preview-title');
+      if (!viewport || !dotsWrap || !titleEl) return;
+      titleEl.textContent = current.title;
+      viewport.innerHTML = `<div class="theme-preview-slide">${current.html}</div>`;
+      dotsWrap.innerHTML = dots;
+      dotsWrap.querySelectorAll('.theme-preview-dot').forEach((dotBtn) => {
+        dotBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const idx = Number.parseInt(dotBtn.getAttribute('data-preview-index') || '0', 10) || 0;
+          renderThemePreviewSlide(idx);
+        });
+      });
+    }
+
+    function toggleThemePreviewWindow() {
+      if (!themePreviewModal) return;
+      const opening = !themePreviewModal.classList.contains('visible');
+      if (!opening) {
+        closeThemePreviewModal();
+        if (previewBtn) previewBtn.setAttribute('aria-expanded', 'false');
+        return;
+      }
+      renderThemePreviewSlide(themePreviewSlideIndex);
+      positionThemePreviewModal();
+      themePreviewModal.classList.add('visible');
+      themePreviewModal.setAttribute('aria-hidden', 'false');
+      bringFloatingWindowToFront(themePreviewModal);
+      if (previewBtn) previewBtn.setAttribute('aria-expanded', 'true');
+    }
+
+    syncPreviewButtonStyle();
+
     function setThemeBusy(locked) {
       if (!modal) return;
       modal.classList.toggle('theme-busy', !!locked);
+      if (previewBtn) previewBtn.disabled = !!locked;
       if (aiDesignerBtn) {
         aiDesignerBtn.disabled = !!locked;
         aiDesignerBtn.classList.toggle('loading', !!locked);
@@ -5409,7 +5755,17 @@
       setStatus('Theme reset to default values.', false);
     });
 
+    if (previewBtn) {
+      previewBtn.setAttribute('aria-haspopup', 'dialog');
+      previewBtn.setAttribute('aria-expanded', 'false');
+      previewBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleThemePreviewWindow();
+      });
+    }
+
     importBtn.addEventListener('click', () => {
+      closeThemePreviewModal();
       importInput.value = '';
       importInput.click();
     });
@@ -5434,6 +5790,7 @@
     });
 
     exportBtn.addEventListener('click', () => {
+      closeThemePreviewModal();
       try {
         const dataStr = JSON.stringify(sanitizeThemeConfig(draftTheme), null, 2);
         const blob = new Blob([dataStr], { type: 'application/json' });
@@ -6592,7 +6949,7 @@
     let offsetY = 0;
 
     header.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.word-explain-popover-header-actions')) return;
+      if (e.target.closest('.word-explain-popover-header-actions') || e.target.closest('button')) return;
       dragging = true;
       const rect = popover.getBoundingClientRect();
       popover.style.left = rect.left + 'px';
