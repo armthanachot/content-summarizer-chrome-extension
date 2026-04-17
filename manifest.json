@@ -24,7 +24,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["file.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
@@ -36,7 +36,9 @@
         "icons/assistant.png",
         "icons/open_icon.svg",
         "icons/icons8-clip-24.png",
-        "icons/icons8-json-50.png"
+        "icons/icons8-json-50.png",
+        "icons/icons8-markdown-36.png",
+        "icons/icons8-menu-vertical-100.png"
       ],
       "matches": ["<all_urls>"]
     }

@@ -544,8 +544,8 @@
     .btn-clear:disabled,
     .toggle-option:disabled,
     .lang-select-btn:disabled,
-    .translate-btn:disabled,
-    .copy-btn:disabled,
+    .summary-actions-menu-btn:disabled,
+    .summary-action-item:disabled,
     .refresh-btn:disabled,
     .assistant-chat-btn:disabled {
       opacity: 0.55;
@@ -755,33 +755,6 @@
       border-color: #81C784;
     }
 
-    .copy-btn {
-      padding: 5px 12px;
-      border: 1.5px solid #C8E6C9;
-      border-radius: 6px;
-      background: #fff;
-      color: #43A047;
-      font-size: 12px;
-      font-family: inherit;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .copy-btn:hover {
-      background: #E8F5E9;
-      border-color: #81C784;
-    }
-
-    .copy-btn.copied {
-      background: #43A047;
-      color: #fff;
-      border-color: #43A047;
-    }
-
     .response-actions {
       display: flex;
       align-items: center;
@@ -789,13 +762,13 @@
       flex-shrink: 0;
     }
 
-    /* ===== Translate ===== */
+    /* ===== Summary Actions Menu ===== */
 
-    .translate-wrapper {
+    .summary-actions-menu {
       position: relative;
     }
 
-    .translate-btn {
+    .summary-actions-menu-btn {
       padding: 4px 8px;
       border: 1.5px solid #C8E6C9;
       border-radius: 6px;
@@ -807,18 +780,19 @@
       justify-content: center;
     }
 
-    .translate-btn:hover {
+    .summary-actions-menu-btn:hover:not(:disabled) {
       background: #E8F5E9;
       border-color: #81C784;
     }
 
-    .translate-btn img {
-      width: 20px;
+    .summary-actions-menu-btn img {
+      width: 18px;
       height: 20px;
       pointer-events: none;
+      display: block;
     }
 
-    .translate-dropdown {
+    .summary-actions-popover {
       position: absolute;
       top: calc(100% + 6px);
       right: 0;
@@ -831,6 +805,46 @@
       overflow: hidden;
       animation: csDropIn 0.15s ease-out;
     }
+
+    .summary-action-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      font-size: 13px;
+      font-family: inherit;
+      color: #2E7D32;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      transition: background 0.15s;
+    }
+
+    .summary-action-item + .summary-action-item {
+      border-top: 1px solid #A5D6A7;
+    }
+
+    .summary-action-item:hover:not(:disabled) {
+      background: #E8F5E9;
+    }
+
+    .summary-action-item img {
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+      display: block;
+    }
+
+    .summary-action-item.copied {
+      background: #E8F5E9;
+      color: #2E7D32;
+      font-weight: 600;
+    }
+
+    /* ===== Translate ===== */
 
     @keyframes csDropIn {
       from { opacity: 0; transform: translateY(-6px); }
@@ -4042,11 +4056,10 @@
           <button class="refresh-btn" title="Re-summarize">↻ Refresh</button>
         </div>
         <div class="response-actions">
-          <div class="translate-wrapper">
-            <button class="translate-btn" title="Translate"></button>
-          </div>
           <button type="button" class="assistant-chat-btn" title="Chat about this summary" aria-label="Chat about summary"></button>
-          <button class="copy-btn">📋 Copy</button>
+          <div class="summary-actions-menu">
+            <button type="button" class="summary-actions-menu-btn" title="Summary actions" aria-label="Open summary actions menu"></button>
+          </div>
         </div>
       </div>
       <div class="response-content">
@@ -4065,11 +4078,10 @@
     const urlDisplayText = inputPanel.querySelector('.url-display-text');
     const urlOpenBtn = inputPanel.querySelector('.url-open-btn');
     const toggleBtns = inputPanel.querySelectorAll('.toggle-option');
-    const copyBtn = responsePanel.querySelector('.copy-btn');
     const refreshBtn = responsePanel.querySelector('.refresh-btn');
     const responseContent = responsePanel.querySelector('.response-content');
-    const translateBtn = responsePanel.querySelector('.translate-btn');
-    const translateWrapper = responsePanel.querySelector('.translate-wrapper');
+    const summaryActionsMenu = responsePanel.querySelector('.summary-actions-menu');
+    const summaryActionsMenuBtn = responsePanel.querySelector('.summary-actions-menu-btn');
     const assistantChatBtn = responsePanel.querySelector('.assistant-chat-btn');
 
     let inputMode = 'text';
@@ -4091,7 +4103,7 @@
         closeLangDropdown();
         return;
       }
-      closeDropdown();
+      closeSummaryActionsMenu();
 
       const dropdown = document.createElement('div');
       dropdown.className = 'lang-select-dropdown';
@@ -4126,8 +4138,7 @@
     try {
       translateImg.src = chrome.runtime.getURL('icons/translate.png');
     } catch {}
-    translateImg.alt = 'Translate';
-    translateBtn.appendChild(translateImg);
+    translateImg.alt = '';
 
     const assistantImg = document.createElement('img');
     try {
@@ -4136,6 +4147,18 @@
     assistantImg.alt = 'Assistant';
     assistantChatBtn.appendChild(assistantImg);
     assistantChatBtn.addEventListener('click', () => openSummaryChatPanel());
+
+    const downloadMdImg = document.createElement('img');
+    try {
+      downloadMdImg.src = chrome.runtime.getURL('icons/icons8-markdown-36.png');
+    } catch {}
+    downloadMdImg.alt = '';
+    const menuDotsImg = document.createElement('img');
+    try {
+      menuDotsImg.src = chrome.runtime.getURL('icons/icons8-menu-vertical-100.png');
+    } catch {}
+    menuDotsImg.alt = '';
+    summaryActionsMenuBtn.appendChild(menuDotsImg);
 
     if (pendingText) {
       textarea.value = pendingText;
@@ -4174,6 +4197,7 @@
       responseContent.innerHTML = parseMarkdown(rawResponse);
     }
     assistantChatBtn.disabled = !rawResponse;
+    summaryActionsMenuBtn.disabled = !rawResponse;
 
     async function runSummarize() {
       let messagePayload;
@@ -4307,12 +4331,20 @@
       }
     });
 
-    copyBtn.addEventListener('click', () => {
+    let actionsMenuOpen = false;
+
+    function closeSummaryActionsMenu() {
+      const dd = summaryActionsMenu.querySelector('.summary-actions-popover');
+      if (dd) dd.remove();
+      actionsMenuOpen = false;
+    }
+
+    function copySummaryToClipboard(copyItemBtn) {
       if (!rawResponse) return;
       navigator.clipboard
         .writeText(rawResponse)
         .then(() => {
-          showCopiedFeedback(copyBtn);
+          showCopiedFeedback(copyItemBtn);
         })
         .catch(() => {
           const tmp = document.createElement('textarea');
@@ -4322,59 +4354,91 @@
           tmp.select();
           document.execCommand('copy');
           document.body.removeChild(tmp);
-          showCopiedFeedback(copyBtn);
+          showCopiedFeedback(copyItemBtn);
         });
-    });
-
-    let dropdownOpen = false;
-
-    function closeDropdown() {
-      const dd = translateWrapper.querySelector('.translate-dropdown');
-      if (dd) dd.remove();
-      dropdownOpen = false;
     }
 
-    function setUILocked(locked) {
-      summarizeBtn.disabled = locked;
-      clearBtn.disabled = locked;
-      langSelectBtn.disabled = locked;
-      translateBtn.disabled = locked;
-      assistantChatBtn.disabled = locked || !rawResponse;
-      copyBtn.disabled = locked;
-      refreshBtn.disabled = locked;
-      textarea.disabled = locked;
-      lengthInput.disabled = locked;
-      toggleBtns.forEach(b => b.disabled = locked);
-      if (locked) {
-        closeLangDropdown();
-        closeDropdown();
-      }
-      updateSummaryChatExpertButtonState();
+    function downloadSummaryMarkdown() {
+      if (!rawResponse) return;
+      const ex = globalThis.csSummaryFileExport;
+      if (!ex || typeof ex.downloadSummaryMarkdownExport !== 'function') return;
+      ex.downloadSummaryMarkdownExport({
+        sourceUrl: summarySourceUrl || window.location.href,
+        summaryMarkdown: rawResponse,
+      });
     }
 
-    translateBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!originalResponse) return;
+    function buildSummaryActionsMenu() {
+      closeSummaryActionsMenu();
+      const popover = document.createElement('div');
+      popover.className = 'summary-actions-popover';
 
-      if (dropdownOpen) {
-        closeDropdown();
-        return;
-      }
+      const translateLabel = document.createElement('span');
+      translateLabel.className = 'lang-name';
+      translateLabel.textContent = 'Translate';
+      const translateItem = document.createElement('button');
+      translateItem.className = 'summary-action-item';
+      translateItem.type = 'button';
+      translateItem.appendChild(translateImg.cloneNode(true));
+      translateItem.appendChild(translateLabel);
+      translateItem.disabled = isLoading || !originalResponse;
+      translateItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        buildTranslateMenu(popover);
+      });
+      popover.appendChild(translateItem);
 
-      const dropdown = document.createElement('div');
-      dropdown.className = 'translate-dropdown';
+      const downloadLabel = document.createElement('span');
+      downloadLabel.className = 'lang-name';
+      downloadLabel.textContent = 'Download';
+      const downloadItem = document.createElement('button');
+      downloadItem.className = 'summary-action-item';
+      downloadItem.type = 'button';
+      downloadItem.appendChild(downloadMdImg.cloneNode(true));
+      downloadItem.appendChild(downloadLabel);
+      downloadItem.disabled = isLoading || !rawResponse;
+      downloadItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeSummaryActionsMenu();
+        downloadSummaryMarkdown();
+      });
+      popover.appendChild(downloadItem);
 
+      const copyLabel = document.createElement('span');
+      copyLabel.className = 'lang-name';
+      copyLabel.textContent = 'Copy';
+      const copyItem = document.createElement('button');
+      copyItem.className = 'summary-action-item';
+      copyItem.type = 'button';
+      copyItem.textContent = '📋 ';
+      copyItem.appendChild(copyLabel);
+      copyItem.disabled = isLoading || !rawResponse;
+      copyItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copySummaryToClipboard(copyItem);
+      });
+      popover.appendChild(copyItem);
+
+      summaryActionsMenu.appendChild(popover);
+      actionsMenuOpen = true;
+    }
+
+    function buildTranslateMenu(hostPopover) {
+      hostPopover.innerHTML = '';
       LANGUAGES.forEach((lang) => {
         const option = document.createElement('button');
-        option.className = 'translate-option';
+        option.className = 'summary-action-item';
+        option.type = 'button';
         option.innerHTML = `<span class="flag">${lang.flag}</span><span class="lang-name">${lang.name}</span>`;
-        option.addEventListener('click', async () => {
-          closeDropdown();
+        option.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          closeSummaryActionsMenu();
 
           if (responseCache[lang.code]) {
             clearSummaryChatExpertAdvisorsUi();
             rawResponse = responseCache[lang.code];
             responseContent.innerHTML = parseMarkdown(rawResponse);
+            summaryActionsMenuBtn.disabled = false;
             return;
           }
 
@@ -4414,8 +4478,8 @@
                     else reject(new Error(resp.error));
                   }
                 );
-              } catch (e) {
-                reject(e);
+              } catch (e2) {
+                reject(e2);
               }
             });
             clearSummaryChatExpertAdvisorsUi();
@@ -4431,16 +4495,40 @@
             }
           }
         });
-        dropdown.appendChild(option);
+        hostPopover.appendChild(option);
       });
+    }
 
-      translateWrapper.appendChild(dropdown);
-      dropdownOpen = true;
+    function setUILocked(locked) {
+      summarizeBtn.disabled = locked;
+      clearBtn.disabled = locked;
+      langSelectBtn.disabled = locked;
+      summaryActionsMenuBtn.disabled = locked || !rawResponse;
+      assistantChatBtn.disabled = locked || !rawResponse;
+      refreshBtn.disabled = locked;
+      textarea.disabled = locked;
+      lengthInput.disabled = locked;
+      toggleBtns.forEach(b => b.disabled = locked);
+      if (locked) {
+        closeLangDropdown();
+        closeSummaryActionsMenu();
+      }
+      updateSummaryChatExpertButtonState();
+    }
+
+    summaryActionsMenuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!rawResponse) return;
+      if (actionsMenuOpen) {
+        closeSummaryActionsMenu();
+        return;
+      }
+      buildSummaryActionsMenu();
     });
 
     dropdownClickHandler = (e) => {
-      if (dropdownOpen && !e.composedPath().includes(translateWrapper)) {
-        closeDropdown();
+      if (actionsMenuOpen && !e.composedPath().includes(summaryActionsMenu)) {
+        closeSummaryActionsMenu();
       }
       if (langDropdownOpen && !e.composedPath().includes(langSelectWrapper)) {
         closeLangDropdown();
@@ -4457,11 +4545,12 @@
   }
 
   function showCopiedFeedback(btn) {
+    const oldHtml = btn.innerHTML;
     btn.classList.add('copied');
-    btn.textContent = '✓ Copied!';
+    btn.innerHTML = '<span>✓ Copied!</span>';
     setTimeout(() => {
       btn.classList.remove('copied');
-      btn.innerHTML = '📋 Copy';
+      btn.innerHTML = oldHtml;
     }, 1800);
   }
 
