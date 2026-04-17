@@ -3123,6 +3123,35 @@
       flex-shrink: 0;
     }
 
+    .word-explain-popover-copy {
+      width: 22px;
+      height: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 7px;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s, border-color 0.2s;
+      line-height: 1;
+    }
+
+    .word-explain-popover-copy:hover {
+      background: rgba(255, 255, 255, 0.28);
+      border-color: rgba(255, 255, 255, 0.52);
+    }
+
+    .word-explain-popover-copy.copied {
+      background: #22c55e;
+      border-color: #16a34a;
+      color: #fff;
+    }
+
     .word-explain-popover-minimize {
       width: 22px;
       height: 22px;
@@ -3268,6 +3297,7 @@
 
     .word-explain-popover-title,
     .word-explain-popover-term,
+    .word-explain-popover-copy,
     .word-explain-popover-close {
       color: var(--cs-explain-header-text, #FFFFFF) !important;
     }
@@ -3467,6 +3497,7 @@
   let explainRect = null;
   let explainTerm = '';
   let explainBodyHtml = '';
+  let explainBodyMarkdown = '';
   /** True when chat was opened from context menu "Fast Chat" without the main modal. */
   let fastChatStandaloneMode = false;
   let themePreviewModal = null;
@@ -3600,6 +3631,7 @@
       explainRect: null,
       explainTerm: '',
       explainBodyHtml: '',
+      explainBodyMarkdown: '',
       explainRequestId: 0,
       chatVisible: false,
       explainVisible: false,
@@ -3660,6 +3692,7 @@
     explainRect = cloneJsonSafe(page.explainRect, null);
     explainTerm = page.explainTerm || '';
     explainBodyHtml = page.explainBodyHtml || '';
+    explainBodyMarkdown = page.explainBodyMarkdown || '';
     page.explainRequestId = Number.isFinite(page.explainRequestId) ? page.explainRequestId : 0;
   }
 
@@ -3684,6 +3717,7 @@
     page.explainRect = cloneJsonSafe(explainRect, null);
     page.explainTerm = explainTerm || '';
     page.explainBodyHtml = explainBodyHtml || '';
+    page.explainBodyMarkdown = explainBodyMarkdown || '';
     page.explainRequestId = Number.isFinite(page.explainRequestId) ? page.explainRequestId : 0;
     page.chatVisible = !!(
       summaryChatPopover &&
@@ -5024,6 +5058,7 @@
         <span class="word-explain-popover-title">🔍 Explain</span>
         <span class="word-explain-popover-term"></span>
         <div class="word-explain-popover-header-actions">
+          <button type="button" class="word-explain-popover-copy" title="Copy explain as Markdown" aria-label="Copy explain as Markdown">⧉</button>
           <button type="button" class="word-explain-popover-minimize" title="Minimize">−</button>
           <button type="button" class="word-explain-popover-close" title="Close">✕</button>
         </div>
@@ -5031,6 +5066,39 @@
       <div class="word-explain-popover-body"></div>
     `;
     modalShadow.appendChild(wordExplainPopover);
+
+    wordExplainPopover.querySelector('.word-explain-popover-copy').addEventListener('click', () => {
+      const copyBtn = wordExplainPopover.querySelector('.word-explain-popover-copy');
+      const text = (explainBodyMarkdown || '').trim();
+      if (!text) return;
+
+      const markCopied = () => {
+        copyBtn.classList.add('copied');
+        copyBtn.title = 'Copied!';
+        copyBtn.setAttribute('aria-label', 'Copied!');
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+          copyBtn.title = 'Copy explain as Markdown';
+          copyBtn.setAttribute('aria-label', 'Copy explain as Markdown');
+        }, 1500);
+      };
+
+      navigator.clipboard.writeText(text).then(
+        () => {
+          markCopied();
+        },
+        () => {
+          const tmp = document.createElement('textarea');
+          tmp.value = text;
+          tmp.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
+          document.body.appendChild(tmp);
+          tmp.select();
+          document.execCommand('copy');
+          document.body.removeChild(tmp);
+          markCopied();
+        }
+      );
+    });
 
     wordExplainPopover.querySelector('.word-explain-popover-minimize').addEventListener('click', () => {
       minimizeExplainPanel();
@@ -7096,6 +7164,7 @@
             <span>Explaining...</span>
           </div>
         `;
+        explainBodyMarkdown = '';
         const requestPageId = activeSourcePageId;
         const requestId = ++explainRequestIdSeed;
         const requestPage = getSourcePageById(requestPageId);
@@ -7136,8 +7205,10 @@
             const targetPage = getSourcePageById(requestPageId);
             if (!targetPage || targetPage.explainRequestId !== requestId) return;
             targetPage.explainBodyHtml = parseMarkdown(result);
+            targetPage.explainBodyMarkdown = typeof result === 'string' ? result : '';
             if (activeSourcePageId === requestPageId && wordExplainPopover.classList.contains('visible')) {
               explainBodyHtml = targetPage.explainBodyHtml;
+              explainBodyMarkdown = targetPage.explainBodyMarkdown;
               bodyEl.innerHTML = explainBodyHtml;
             }
             saveActiveSourcePageStateIfMainModal();
@@ -7145,8 +7216,10 @@
             const targetPage = getSourcePageById(requestPageId);
             if (!targetPage || targetPage.explainRequestId !== requestId) return;
             targetPage.explainBodyHtml = `<div class="error-text">Error: ${escapeHtml(err.message)}</div>`;
+            targetPage.explainBodyMarkdown = '';
             if (activeSourcePageId === requestPageId && wordExplainPopover.classList.contains('visible')) {
               explainBodyHtml = targetPage.explainBodyHtml;
+              explainBodyMarkdown = '';
               bodyEl.innerHTML = explainBodyHtml;
             }
             saveActiveSourcePageStateIfMainModal();

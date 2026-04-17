@@ -1,49 +1,29 @@
 (function (g) {
   'use strict';
 
-  const SUMMARY_MARKDOWN = `# Weekly Product Summary
-This is a **curated digest** of what shipped, what slipped, and what needs attention.
+  const SUMMARY_MARKDOWN = `เมื่อวันที่ 17 เมษายน 2026 เลขาธิการพาณิชย์ **Howard Lutnick** ระบุว่าประธานาธิบดี **Trump** มองว่าข้อตกลงการค้า **USMCA** กับแคนาดาและเม็กซิโกเป็นข้อตกลงที่ไม่ดีและจำเป็นต้องได้รับการพิจารณาใหม่
 
-## Highlights
-- ✅ Search latency improved by **28%**
-- 🧪 Rolled out A/B experiment for onboarding CTA
-- ⚠️ Billing webhook retries increased in APAC
+## มุมมองของฝ่ายบริหาร Trump ต่อ USMCA
+*   **Howard Lutnick** เลขาธิการพาณิชย์ กล่าวว่าประธานาธิบดี **Trump** ถือว่าสนธิสัญญาการค้า **USMCA** ปัจจุบันเป็นข้อตกลงที่แย่และจำเป็นต้องได้รับการ "**พิจารณาใหม่และจินตนาการใหม่**"
+*   **Lutnick** วิพากษ์วิจารณ์ว่าการปฏิบัติต่อ **เม็กซิโก** และ **แคนาดา** เหมือนกับรัฐในสหรัฐฯ อย่าง **จอร์เจีย** และ **แอละแบมา** โดยที่พวกเขาไม่ได้ให้คำมั่นสัญญาอย่างเต็มที่นั้นเป็น "การค้าที่ไม่ดี"
+*   แม้จะมีข้อดีอยู่บ้าง แต่ก็มีข้อเสียจำนวนมากที่ต้องได้รับการพิจารณาใหม่เพื่อประโยชน์ของ **สหรัฐฯ**
 
-## Delivery Snapshot
-| Area | Status | Owner |
-| --- | --- | --- |
-| API | On Track | Backend |
-| Web UI | At Risk | Frontend |
-| QA | Stable | QA Team |
+## ความกังวลและผลกระทบ
+*   สนธิสัญญา **USMCA** มีกำหนดการทบทวนอย่างเป็นทางการในอีกไม่กี่เดือนข้างหน้า และเจ้าหน้าที่ฝ่ายบริหาร **Trump** คาดว่าจะพยายามเปลี่ยนแปลงข้อตกลง
+*   ความไม่แน่นอนเกี่ยวกับข้อตกลงการค้า ซึ่งอนุญาตให้สินค้าส่งออกส่วนใหญ่ของ **แคนาดา** เข้าสู่ **สหรัฐฯ** โดยปลอดภาษี ได้ส่งผลกระทบต่อแผนการลงทุนและการจ้างงานในหมู่ธุรกิจต่างๆ
 
-> Note: Keep focus on reducing friction in first-time user flow.
-
-\`\`\`js
-const releaseHealth = { score: 86, trend: "up" };
-console.log(releaseHealth);
-\`\`\`
-
-Read full notes: [internal release board](https://example.com/releases)
-
----
+## ความคืบหน้าในการเจรจา
+*   ตัวแทนของ **Dominic LeBlanc** รัฐมนตรีของ **แคนาดา** ที่รับผิดชอบการเจรจา **USMCA** ยังไม่ได้ตอบกลับคำขอความคิดเห็นเกี่ยวกับข้อสังเกตของ **Lutnick** ทันที
+*   เมื่อสัปดาห์ที่แล้ว **Jamieson Greer** ผู้แทนการค้าของ **สหรัฐฯ** กล่าวว่าฝ่ายบริหาร **Trump** มีความคืบหน้าในการเจรจากับ **เม็กซิโก** แต่ยังมี "ปัญหาบางอย่าง" กับ **แคนาดา** ที่ยังไม่ได้รับการแก้ไข
 `;
 
-  const EXPLAIN_MARKDOWN = `# Explain: Why request batching helps
-Request batching reduces network overhead by grouping small operations into one payload.
+  const EXPLAIN_MARKDOWN = `**USMCA** ย่อมาจาก **United States-Mexico-Canada Agreement** หรือในภาษาไทยคือ **ข้อตกลงสหรัฐฯ-เม็กซิโก-แคนาดา**
 
-## Benefits
-1. Fewer round trips to server
-2. Better throughput under load
-3. Lower chance of rate-limit spikes
+ในบริบทของสรุปนี้ **USMCA** คือ:
 
-**Rule of thumb:** batch independent reads, avoid batching long-running writes.
-
-\`\`\`txt
-single requests: 12 calls x 120ms
-batched request: 1 call x 260ms
-\`\`\`
-
-> Caveat: very large batches can increase tail latency.
+*   **ข้อตกลงการค้า**: เป็นสนธิสัญญาการค้าระหว่างสามประเทศ ได้แก่ สหรัฐอเมริกา เม็กซิโก และแคนาดา ซึ่งกำหนดกฎเกณฑ์และเงื่อนไขสำหรับการค้าสินค้าและบริการระหว่างกัน
+*   **ประเด็นสำคัญที่ถูกพิจารณา**: ในสรุปนี้ **USMCA** เป็นหัวข้อหลักที่ถูกกล่าวถึง เนื่องจากประธานาธิบดี Trump มองว่าเป็น "ข้อตกลงที่ไม่ดี" และต้องการให้มีการ "พิจารณาใหม่และจินตนาการใหม่" เพื่อผลประโยชน์ของสหรัฐฯ
+*   **ผลกระทบต่อธุรกิจ**: ข้อตกลงนี้มีความสำคัญอย่างยิ่งต่อธุรกิจในภูมิภาค เพราะอนุญาตให้สินค้าส่งออกส่วนใหญ่ของแคนาดาเข้าสู่สหรัฐฯ โดยปลอดภาษี ซึ่งความไม่แน่นอนเกี่ยวกับการเปลี่ยนแปลงข้อตกลงนี้ได้ส่งผลกระทบต่อแผนการลงทุนและการจ้างงานของภาคธุรกิจ
 `;
 
   const CHAT_CONVERSATIONS = [
