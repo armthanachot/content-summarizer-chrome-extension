@@ -38,7 +38,8 @@
         "icons/icons8-clip-24.png",
         "icons/icons8-json-50.png",
         "icons/icons8-markdown-36.png",
-        "icons/icons8-menu-vertical-100.png"
+        "icons/icons8-menu-vertical-100.png",
+        "icons/icons8-plus-50.png"
       ],
       "matches": ["<all_urls>"]
     }

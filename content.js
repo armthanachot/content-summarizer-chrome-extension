@@ -16,6 +16,9 @@
   const INJECTED_ID = 'cs-ext-injected';
   const POPOVER_ID = 'cs-ext-popover';
   const MODAL_ID = 'cs-ext-modal';
+  const SOURCE_PAGE_CONFIG = {
+    maxPages: 10,
+  };
   const FLOATING_STACK_ROOT_Z_INDEX = 2147483000;
   const FLOATING_STACK_MAX_Z_INDEX = 2147483600;
 
@@ -443,6 +446,80 @@
       flex: 1;
     }
 
+    .source-pages-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 28px;
+    }
+
+    .source-pages-list {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: thin;
+    }
+
+    .source-page-tab {
+      min-width: 28px;
+      height: 28px;
+      border: 1.5px solid #66BB6A;
+      border-radius: 7px;
+      background: #fff;
+      color: #43A047;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 8px;
+      font-family: inherit;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .source-page-tab.active {
+      background: linear-gradient(135deg, #66BB6A, #43A047);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(76,175,80,0.3);
+      border-color: #43A047;
+    }
+
+    .source-page-tab:hover:not(:disabled):not(.active) {
+      background: #F1F8E9;
+      border-color: #43A047;
+    }
+
+    .source-page-add-btn {
+      width: 28px;
+      height: 28px;
+      border: 1.5px solid #66BB6A;
+      border-radius: 7px;
+      background: #fff;
+      color: #43A047;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+      padding: 0;
+    }
+
+    .source-page-add-btn img {
+      width: 16px;
+      height: 16px;
+      display: block;
+    }
+
+    .source-page-add-btn:hover:not(:disabled) {
+      background: #F1F8E9;
+      border-color: #43A047;
+    }
+
     .content-input {
       flex: 1;
       min-height: 180px;
@@ -547,7 +624,9 @@
     .summary-actions-menu-btn:disabled,
     .summary-action-item:disabled,
     .refresh-btn:disabled,
-    .assistant-chat-btn:disabled {
+    .assistant-chat-btn:disabled,
+    .source-page-tab:disabled,
+    .source-page-add-btn:disabled {
       opacity: 0.55;
       cursor: not-allowed;
     }
@@ -2296,6 +2375,9 @@
   let pendingText = '';
   let lastSelectedText = '';
   let responseCache = {};
+  let sourcePages = [];
+  let activeSourcePageId = '';
+  let sourcePageIdSeed = 0;
   let floatingWindowTopZIndex = FLOATING_STACK_ROOT_Z_INDEX + 4;
 
   let modalRoot = null;
@@ -2352,6 +2434,94 @@
     'image/webp',
     'image/gif',
   ]);
+
+  function cloneJsonSafe(value, fallback) {
+    try {
+      if (typeof structuredClone === 'function') return structuredClone(value);
+      return JSON.parse(JSON.stringify(value));
+    } catch {
+      return fallback;
+    }
+  }
+
+  function createSourcePage(initialText) {
+    sourcePageIdSeed += 1;
+    return {
+      id: `source-page-${sourcePageIdSeed}`,
+      inputMode: 'text',
+      textInput: initialText || '',
+      urlInput: '',
+      urlLocked: false,
+      responseLength: '',
+      selectedLang: 'auto',
+      rawResponse: '',
+      originalResponse: '',
+      summarySourceUrl: '',
+      responseCache: {},
+      summaryChatMessages: [],
+      summaryChatPendingImages: [],
+      summaryChatLastError: '',
+      summaryChatAdvisors: [],
+      summaryChatAdvisorPersona: null,
+      summaryChatAdvisorSelectedValue: '',
+    };
+  }
+
+  function ensureSourcePagesInitialized() {
+    if (sourcePages.length > 0) return;
+    sourcePages = [createSourcePage(pendingText || '')];
+    activeSourcePageId = sourcePages[0].id;
+    pendingText = '';
+  }
+
+  function getActiveSourcePageIndex() {
+    const idx = sourcePages.findIndex((page) => page.id === activeSourcePageId);
+    return idx >= 0 ? idx : 0;
+  }
+
+  function getActiveSourcePage() {
+    ensureSourcePagesInitialized();
+    const idx = getActiveSourcePageIndex();
+    if (!sourcePages[idx]) {
+      sourcePages = [createSourcePage('')];
+      activeSourcePageId = sourcePages[0].id;
+      return sourcePages[0];
+    }
+    return sourcePages[idx];
+  }
+
+  function loadActiveSourcePageState() {
+    const page = getActiveSourcePage();
+    rawResponse = page.rawResponse || '';
+    originalResponse = page.originalResponse || '';
+    summarySourceUrl = page.summarySourceUrl || '';
+    responseCache = cloneJsonSafe(page.responseCache || {}, {});
+    summaryChatMessages = cloneJsonSafe(page.summaryChatMessages || [], []);
+    summaryChatPendingImages = cloneJsonSafe(page.summaryChatPendingImages || [], []);
+    summaryChatLastError = page.summaryChatLastError || '';
+    summaryChatAdvisors = cloneJsonSafe(page.summaryChatAdvisors || [], []);
+    summaryChatAdvisorPersona = cloneJsonSafe(page.summaryChatAdvisorPersona, null);
+    summaryChatAdvisorSelectedValue = page.summaryChatAdvisorSelectedValue || '';
+  }
+
+  function saveActiveSourcePageState() {
+    const page = getActiveSourcePage();
+    page.rawResponse = rawResponse || '';
+    page.originalResponse = originalResponse || '';
+    page.summarySourceUrl = summarySourceUrl || '';
+    page.responseCache = cloneJsonSafe(responseCache || {}, {});
+    page.summaryChatMessages = cloneJsonSafe(summaryChatMessages || [], []);
+    page.summaryChatPendingImages = cloneJsonSafe(summaryChatPendingImages || [], []);
+    page.summaryChatLastError = summaryChatLastError || '';
+    page.summaryChatAdvisors = cloneJsonSafe(summaryChatAdvisors || [], []);
+    page.summaryChatAdvisorPersona = cloneJsonSafe(summaryChatAdvisorPersona, null);
+    page.summaryChatAdvisorSelectedValue = summaryChatAdvisorSelectedValue || '';
+  }
+
+  function saveActiveSourcePageStateIfMainModal() {
+    if (fastChatStandaloneMode) return;
+    saveActiveSourcePageState();
+  }
 
   function resetSummaryChatSession() {
     summaryChatMessages = [];
@@ -2446,11 +2616,13 @@
         dedupe.add(key);
       }
     });
+    saveActiveSourcePageStateIfMainModal();
     renderSummaryChatPendingImages();
   }
 
   function removeSummaryChatPendingImage(imageId) {
     summaryChatPendingImages = summaryChatPendingImages.filter((img) => img.id !== imageId);
+    saveActiveSourcePageStateIfMainModal();
     renderSummaryChatPendingImages();
   }
 
@@ -2570,6 +2742,7 @@
     summaryChatMessages = [];
     summaryChatLastError = '';
     summaryChatLoading = false;
+    saveActiveSourcePageStateIfMainModal();
     if (!summaryChatPopover) return;
     const input = summaryChatPopover.querySelector('.summary-chat-input');
     if (input) input.value = '';
@@ -2587,6 +2760,7 @@
     summaryChatPendingImages = [];
     summaryChatLastError = '';
     summaryChatLoading = false;
+    saveActiveSourcePageStateIfMainModal();
     const input = summaryChatPopover.querySelector('.summary-chat-input');
     if (input) input.value = '';
     renderSummaryChatPendingImages();
@@ -3275,6 +3449,7 @@
     input.value = '';
     summaryChatMessages.push({ role: 'user', content: text, images: pendingImages });
     summaryChatPendingImages = [];
+    saveActiveSourcePageStateIfMainModal();
     renderSummaryChatPendingImages();
     summaryChatLoading = true;
     setSummaryChatInputDisabled(true);
@@ -3312,8 +3487,10 @@
         }
       });
       summaryChatMessages.push({ role: 'assistant', content: reply });
+      saveActiveSourcePageStateIfMainModal();
     } catch (err) {
       summaryChatLastError = err.message || String(err);
+      saveActiveSourcePageStateIfMainModal();
     } finally {
       summaryChatLoading = false;
       setSummaryChatInputDisabled(false);
@@ -3999,15 +4176,35 @@
       dropdownClickHandler = null;
     }
 
+    ensureSourcePagesInitialized();
+    if (pendingText) {
+      const page = getActiveSourcePage();
+      page.inputMode = 'text';
+      page.textInput = pendingText;
+      pendingText = '';
+    }
+    loadActiveSourcePageState();
+    const activePage = getActiveSourcePage();
+    const tabsHtml = sourcePages
+      .map((page, index) => {
+        const activeClass = page.id === activeSourcePageId ? 'active' : '';
+        return `<button type="button" class="source-page-tab ${activeClass}" data-page-id="${page.id}" title="Source ${index + 1}">${index + 1}</button>`;
+      })
+      .join('');
+
     modalBody.innerHTML = '';
 
     const activeProviderLabel = getProviderLabel(currentProvider);
     const inputPanel = document.createElement('div');
     inputPanel.className = 'input-panel';
     inputPanel.innerHTML = `
+      <div class="source-pages-row">
+        <div class="source-pages-list">${tabsHtml}</div>
+        <button type="button" class="source-page-add-btn" title="Add source page" aria-label="Add source page"></button>
+      </div>
       <div class="input-toggle-row">
         <div class="input-toggle">
-          <button class="toggle-option active" data-mode="text">📝 Text</button>
+          <button class="toggle-option" data-mode="text">📝 Text</button>
           <button class="toggle-option" data-mode="url">🔗 URL</button>
         </div>
       </div>
@@ -4077,6 +4274,8 @@
     const urlDisplay = inputPanel.querySelector('.url-display');
     const urlDisplayText = inputPanel.querySelector('.url-display-text');
     const urlOpenBtn = inputPanel.querySelector('.url-open-btn');
+    const pageTabs = inputPanel.querySelectorAll('.source-page-tab');
+    const addPageBtn = inputPanel.querySelector('.source-page-add-btn');
     const toggleBtns = inputPanel.querySelectorAll('.toggle-option');
     const refreshBtn = responsePanel.querySelector('.refresh-btn');
     const responseContent = responsePanel.querySelector('.response-content');
@@ -4084,12 +4283,13 @@
     const summaryActionsMenuBtn = responsePanel.querySelector('.summary-actions-menu-btn');
     const assistantChatBtn = responsePanel.querySelector('.assistant-chat-btn');
 
-    let inputMode = 'text';
+    let inputMode = activePage.inputMode === 'url' ? 'url' : 'text';
 
     const langSelectBtn = inputPanel.querySelector('.lang-select-btn');
     const langSelectWrapper = inputPanel.querySelector('.lang-select-wrapper');
-    let selectedLang = 'auto';
+    let selectedLang = activePage.selectedLang || 'auto';
     let langDropdownOpen = false;
+    const maxPageCount = SOURCE_PAGE_CONFIG.maxPages;
 
     function closeLangDropdown() {
       const dd = langSelectWrapper.querySelector('.lang-select-dropdown');
@@ -4114,6 +4314,7 @@
       autoOpt.addEventListener('click', () => {
         selectedLang = 'auto';
         langSelectBtn.textContent = '🌐 Auto ▾';
+        persistActiveInputState();
         closeLangDropdown();
       });
       dropdown.appendChild(autoOpt);
@@ -4125,6 +4326,7 @@
         option.addEventListener('click', () => {
           selectedLang = lang.code;
           langSelectBtn.textContent = `${lang.flag} ${lang.name} ▾`;
+          persistActiveInputState();
           closeLangDropdown();
         });
         dropdown.appendChild(option);
@@ -4160,26 +4362,67 @@
     menuDotsImg.alt = '';
     summaryActionsMenuBtn.appendChild(menuDotsImg);
 
-    if (pendingText) {
-      textarea.value = pendingText;
-      pendingText = '';
+    const addPageIcon = document.createElement('img');
+    try {
+      addPageIcon.src = chrome.runtime.getURL('icons/icons8-plus-50.png');
+    } catch {}
+    addPageIcon.alt = '';
+    addPageBtn.appendChild(addPageIcon);
+
+    if (selectedLang !== 'auto') {
+      const selectedLangItem = LANGUAGES.find((lang) => lang.code === selectedLang);
+      if (selectedLangItem) {
+        langSelectBtn.textContent = `${selectedLangItem.flag} ${selectedLangItem.name} ▾`;
+      } else {
+        selectedLang = 'auto';
+      }
+    }
+
+    textarea.value = activePage.textInput || '';
+    lengthInput.value = activePage.responseLength || '';
+    urlInput.value = activePage.urlInput || '';
+    urlInput.disabled = !!activePage.urlLocked;
+    if (activePage.urlLocked && activePage.urlInput) {
+      urlDisplayText.textContent = activePage.urlInput;
+      urlDisplay.style.display = '';
+    }
+
+    function applyInputMode(mode) {
+      inputMode = mode === 'url' ? 'url' : 'text';
+      toggleBtns.forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.mode === inputMode);
+      });
+      if (inputMode === 'text') {
+        textarea.style.display = '';
+        urlSection.style.display = 'none';
+      } else {
+        textarea.style.display = 'none';
+        urlSection.style.display = '';
+        if (!urlInput.value && !urlInput.disabled) {
+          urlInput.value = window.location.href;
+        }
+      }
+    }
+
+    function persistActiveInputState() {
+      const page = getActiveSourcePage();
+      page.inputMode = inputMode;
+      page.textInput = textarea.value;
+      page.urlInput = urlInput.value;
+      page.urlLocked = !!urlInput.disabled && urlDisplay.style.display !== 'none';
+      page.responseLength = lengthInput.value;
+      page.selectedLang = selectedLang || 'auto';
+    }
+
+    function persistActivePageState() {
+      persistActiveInputState();
+      saveActiveSourcePageState();
     }
 
     toggleBtns.forEach((btn) => {
       btn.addEventListener('click', () => {
-        toggleBtns.forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        inputMode = btn.dataset.mode;
-        if (inputMode === 'text') {
-          textarea.style.display = '';
-          urlSection.style.display = 'none';
-        } else {
-          textarea.style.display = 'none';
-          urlSection.style.display = '';
-          if (!urlInput.value && !urlInput.disabled) {
-            urlInput.value = window.location.href;
-          }
-        }
+        applyInputMode(btn.dataset.mode || 'text');
+        persistActiveInputState();
       });
     });
 
@@ -4188,10 +4431,39 @@
       if (url) window.open(url, '_blank');
     });
 
+    textarea.addEventListener('input', persistActiveInputState);
+    urlInput.addEventListener('input', persistActiveInputState);
+    lengthInput.addEventListener('input', persistActiveInputState);
+
     urlInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') summarizeBtn.click();
     });
 
+    pageTabs.forEach((tabBtn) => {
+      tabBtn.addEventListener('click', () => {
+        if (isLoading) return;
+        const targetPageId = tabBtn.dataset.pageId || '';
+        if (!targetPageId || targetPageId === activeSourcePageId) return;
+        persistActivePageState();
+        activeSourcePageId = targetPageId;
+        showMainView();
+      });
+    });
+
+    addPageBtn.disabled = sourcePages.length >= maxPageCount;
+    addPageBtn.title = addPageBtn.disabled
+      ? `You can add up to ${maxPageCount} pages`
+      : 'Add source page';
+
+    addPageBtn.addEventListener('click', () => {
+      if (isLoading || sourcePages.length >= maxPageCount) return;
+      persistActivePageState();
+      sourcePages.push(createSourcePage(''));
+      activeSourcePageId = sourcePages[sourcePages.length - 1].id;
+      showMainView();
+    });
+
+    applyInputMode(inputMode);
     if (rawResponse) {
       expandWithResponse(divider, responsePanel);
       responseContent.innerHTML = parseMarkdown(rawResponse);
@@ -4255,6 +4527,7 @@
       isLoading = true;
       setUILocked(true);
       summarizeBtn.textContent = 'Summarizing...';
+      persistActiveInputState();
 
       expandWithResponse(divider, responsePanel);
       const loadingMsg = inputMode === 'url'
@@ -4296,7 +4569,9 @@
         responseCache['original'] = result;
         responseContent.innerHTML = parseMarkdown(result);
         summaryChatMessages = [];
+        summaryChatPendingImages = [];
         summaryChatLastError = '';
+        saveActiveSourcePageState();
         if (summaryChatPopover && summaryChatPopover.classList.contains('visible')) {
           renderSummaryChatMessages();
         }
@@ -4310,6 +4585,7 @@
         isLoading = false;
         setUILocked(false);
         summarizeBtn.textContent = 'Summarize';
+        persistActivePageState();
         if (inputMode === 'url' && urlDisplay.style.display !== 'none') {
           urlInput.disabled = true;
         }
@@ -4329,6 +4605,7 @@
         urlDisplay.style.display = 'none';
         urlInput.focus();
       }
+      persistActiveInputState();
     });
 
     let actionsMenuOpen = false;
@@ -4438,6 +4715,7 @@
             clearSummaryChatExpertAdvisorsUi();
             rawResponse = responseCache[lang.code];
             responseContent.innerHTML = parseMarkdown(rawResponse);
+            saveActiveSourcePageState();
             summaryActionsMenuBtn.disabled = false;
             return;
           }
@@ -4486,6 +4764,7 @@
             rawResponse = result;
             responseCache[lang.code] = result;
             responseContent.innerHTML = parseMarkdown(result);
+            saveActiveSourcePageState();
           } catch (err) {
             responseContent.innerHTML = `<div class="error-text">Translation error: ${escapeHtml(err.message)}</div>`;
           } finally {
@@ -4506,8 +4785,13 @@
       summaryActionsMenuBtn.disabled = locked || !rawResponse;
       assistantChatBtn.disabled = locked || !rawResponse;
       refreshBtn.disabled = locked;
+      addPageBtn.disabled = locked || sourcePages.length >= maxPageCount;
       textarea.disabled = locked;
       lengthInput.disabled = locked;
+      urlInput.disabled = locked || (!!getActiveSourcePage().urlLocked && urlDisplay.style.display !== 'none');
+      pageTabs.forEach((tabBtn) => {
+        tabBtn.disabled = locked;
+      });
       toggleBtns.forEach(b => b.disabled = locked);
       if (locked) {
         closeLangDropdown();
@@ -4537,6 +4821,11 @@
     modalShadow.addEventListener('click', dropdownClickHandler);
 
     initDividerResize(divider, inputPanel, responsePanel);
+
+    if (summaryChatPopover && summaryChatPopover.classList.contains('visible') && !fastChatStandaloneMode) {
+      renderSummaryChatMessages();
+      updateSummaryChatExpertButtonState();
+    }
 
     setTimeout(() => {
       if (inputMode === 'text') textarea.focus();
