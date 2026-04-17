@@ -8,7 +8,12 @@
     "inputBackground": "#F5FCFF",
     "inputBorder": "#B3E5FC",
     "primaryStart": "#29B6F6",
-    "primaryEnd": "#0277BD"
+    "primaryEnd": "#0277BD",
+    "summaryPanelBackground": "#F5FCFF",
+    "summaryPanelBorder": "#B3E5FC",
+    "summaryTitleColor": "#0277BD",
+    "summaryMarkdownText": "#12364D",
+    "summaryMarkdownAccent": "#0288D1"
   },
   "explain": {
     "panelBackground": "#F4FBFF",

@@ -38,6 +38,11 @@
       inputBorder: '#A5D6A7',
       primaryStart: '#66BB6A',
       primaryEnd: '#43A047',
+      summaryPanelBackground: '#FAFFF5',
+      summaryPanelBorder: '#C8E6C9',
+      summaryTitleColor: '#2E7D32',
+      summaryMarkdownText: '#333333',
+      summaryMarkdownAccent: '#2E7D32',
     },
     explain: {
       panelBackground: '#FFFFFF',
@@ -77,6 +82,11 @@
         { key: 'inputBorder', label: 'Input border' },
         { key: 'primaryStart', label: 'Primary gradient start' },
         { key: 'primaryEnd', label: 'Primary gradient end' },
+        { key: 'summaryPanelBackground', label: 'Summary panel background' },
+        { key: 'summaryPanelBorder', label: 'Summary panel border' },
+        { key: 'summaryTitleColor', label: 'Summary title color' },
+        { key: 'summaryMarkdownText', label: 'Summary markdown text' },
+        { key: 'summaryMarkdownAccent', label: 'Summary markdown accent' },
       ],
     },
     {
@@ -131,6 +141,11 @@
           inputBorder: '#FFCCBC',
           primaryStart: '#FF7043',
           primaryEnd: '#E64A19',
+          summaryPanelBackground: '#FFF8F2',
+          summaryPanelBorder: '#FFCCBC',
+          summaryTitleColor: '#D84315',
+          summaryMarkdownText: '#4A2B1A',
+          summaryMarkdownAccent: '#D84315',
         },
         explain: {
           panelBackground: '#FFF7F5',
@@ -171,6 +186,11 @@
           inputBorder: '#B3E5FC',
           primaryStart: '#29B6F6',
           primaryEnd: '#0277BD',
+          summaryPanelBackground: '#F5FCFF',
+          summaryPanelBorder: '#B3E5FC',
+          summaryTitleColor: '#0277BD',
+          summaryMarkdownText: '#12364D',
+          summaryMarkdownAccent: '#0288D1',
         },
         explain: {
           panelBackground: '#F4FBFF',
@@ -489,10 +509,10 @@
     }
 
     .title-theme-btn {
-      width: 24px;
-      height: 24px;
+      width: 32px;
+      height: 32px;
       border: 1px solid rgba(255,255,255,0.34);
-      border-radius: 7px;
+      border-radius: 9px;
       background: rgba(255,255,255,0.16);
       display: inline-flex;
       align-items: center;
@@ -509,8 +529,8 @@
     }
 
     .title-theme-btn img {
-      width: 14px;
-      height: 14px;
+      width: 20px;
+      height: 20px;
       display: block;
       pointer-events: none;
     }
@@ -764,6 +784,47 @@
       font-size: 12px;
       color: #607d60;
       margin-top: 2px;
+    }
+
+    .theme-ai-designer-wrap {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .theme-ai-designer-btn {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .theme-ai-designer-btn img {
+      width: 24px;
+      height: 24px;
+      display: block;
+      transform: rotate(45deg);
+      transform-origin: center;
+      pointer-events: none;
+    }
+
+    .theme-ai-name {
+      min-height: 14px;
+      max-width: 92px;
+      font-size: 10px;
+      color: #2E7D32;
+      text-align: center;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    .modal.theme-busy {
+      pointer-events: none !important;
+      opacity: 0.72;
+      filter: saturate(0.85);
     }
 
     /* ===== Input Panel ===== */
@@ -2835,6 +2896,42 @@
       border-color: var(--cs-summary-primary-start, #66BB6A) !important;
     }
 
+    .response-panel,
+    .response-content {
+      background: var(--cs-summary-panel-bg, #FAFFF5) !important;
+    }
+
+    .response-header,
+    .summary-action-item + .summary-action-item {
+      border-color: var(--cs-summary-panel-border, #C8E6C9) !important;
+    }
+
+    .response-title {
+      color: var(--cs-summary-panel-title, #2E7D32) !important;
+    }
+
+    .response-content p,
+    .response-content li,
+    .response-content td,
+    .response-content code,
+    .response-content pre,
+    .response-content .placeholder-text {
+      color: var(--cs-summary-markdown-text, #333333) !important;
+    }
+
+    .response-content h1,
+    .response-content h2,
+    .response-content h3,
+    .response-content h4,
+    .response-content h5,
+    .response-content h6,
+    .response-content strong,
+    .response-content a,
+    .response-content li::marker,
+    .placeholder-text {
+      color: var(--cs-summary-markdown-accent, #2E7D32) !important;
+    }
+
     .word-explain-popover {
       background: var(--cs-explain-panel-bg, #FFFFFF) !important;
       border-color: var(--cs-explain-border, #1E3A8A) !important;
@@ -2995,6 +3092,7 @@
   let summaryChatAdvisorsPanelOpen = false;
   let summaryChatExpertOutsideCloseBound = false;
   let summaryChatImageViewerOpen = false;
+  let lastGeneratedThemeName = '';
   /** Last chat window geometry while main modal is open (cleared when main modal closes). */
   let summaryChatRect = null;
   let explainRect = null;
@@ -3059,6 +3157,11 @@
       '--cs-summary-input-border': summary.inputBorder,
       '--cs-summary-primary-start': summary.primaryStart,
       '--cs-summary-primary-end': summary.primaryEnd,
+      '--cs-summary-panel-bg': summary.summaryPanelBackground,
+      '--cs-summary-panel-border': summary.summaryPanelBorder,
+      '--cs-summary-panel-title': summary.summaryTitleColor,
+      '--cs-summary-markdown-text': summary.summaryMarkdownText,
+      '--cs-summary-markdown-accent': summary.summaryMarkdownAccent,
       '--cs-explain-panel-bg': explain.panelBackground,
       '--cs-explain-border': explain.borderColor,
       '--cs-explain-header-start': explain.headerStart,
@@ -5002,6 +5105,12 @@
           <button type="button" class="theme-toolbar-btn theme-reset-btn">Reset Default</button>
           <button type="button" class="theme-toolbar-btn theme-import-btn">Import JSON</button>
           <button type="button" class="theme-toolbar-btn theme-export-btn">Export JSON</button>
+          <div class="theme-ai-designer-wrap">
+            <button type="button" class="theme-toolbar-btn theme-ai-designer-btn" title="AI designer" aria-label="AI designer">
+              <img alt="" />
+            </button>
+            <div class="theme-ai-name"></div>
+          </div>
           <input type="file" class="theme-import-input" accept="application/json,.json" />
         </div>
         <div class="theme-status" aria-live="polite"></div>
@@ -5079,6 +5188,23 @@
     const importBtn = view.querySelector('.theme-import-btn');
     const exportBtn = view.querySelector('.theme-export-btn');
     const importInput = view.querySelector('.theme-import-input');
+    const aiDesignerBtn = view.querySelector('.theme-ai-designer-btn');
+    const aiDesignerImg = aiDesignerBtn && aiDesignerBtn.querySelector('img');
+    const aiNameEl = view.querySelector('.theme-ai-name');
+
+    if (aiDesignerImg) {
+      try {
+        aiDesignerImg.src = chrome.runtime.getURL('icons/icons8-designer-64.png');
+      } catch {}
+    }
+    if (aiNameEl) {
+      aiNameEl.textContent = lastGeneratedThemeName || '';
+    }
+
+    function setThemeBusy(locked) {
+      if (!modal) return;
+      modal.classList.toggle('theme-busy', !!locked);
+    }
 
     presetSelect.innerHTML = THEME_PRESETS.map((preset) => {
       return `<option value="${preset.key}">${preset.label}</option>`;
@@ -5149,6 +5275,75 @@
         setStatus('Export failed.', true);
       }
     });
+
+    if (aiDesignerBtn) {
+      aiDesignerBtn.addEventListener('click', async () => {
+        const activeApiKey = getActiveApiKey();
+        if (!activeApiKey) {
+          setStatus('Please set API key first.', true);
+          return;
+        }
+        setStatus('AI designer is generating theme...', false);
+        setThemeBusy(true);
+        try {
+          const generated = await new Promise((resolve, reject) => {
+            try {
+              chrome.runtime.sendMessage(
+                {
+                  type: 'generate-ai-theme',
+                  provider: currentProvider,
+                  apiKey: activeApiKey,
+                  currentTheme: sanitizeThemeConfig(draftTheme),
+                },
+                (resp) => {
+                  if (chrome.runtime.lastError) {
+                    reject(new Error(chrome.runtime.lastError.message));
+                    return;
+                  }
+                  if (!resp || !resp.success) {
+                    reject(new Error(resp?.error || 'Failed to generate theme.'));
+                    return;
+                  }
+                  resolve(resp.data);
+                }
+              );
+            } catch (err) {
+              reject(err);
+            }
+          });
+
+          const generatedTheme = sanitizeThemeConfig(generated?.theme || {});
+          Object.keys(generatedTheme).forEach((sectionKey) => {
+            Object.keys(generatedTheme[sectionKey]).forEach((propKey) => {
+              draftTheme[sectionKey][propKey] = generatedTheme[sectionKey][propKey];
+            });
+          });
+          syncInputsFromDraft();
+
+          themeConfig = sanitizeThemeConfig(draftTheme);
+          applyThemeConfigToUi();
+          try {
+            chrome.storage.local.set({
+              [STORAGE_KEYS.theme]: themeConfig,
+            });
+          } catch {}
+
+          lastGeneratedThemeName =
+            generated && typeof generated.themeName === 'string' ? generated.themeName.trim() : '';
+          if (aiNameEl) aiNameEl.textContent = lastGeneratedThemeName;
+          setStatus(
+            lastGeneratedThemeName
+              ? `AI generated and applied: ${lastGeneratedThemeName}`
+              : 'AI generated and applied a new theme.',
+            false
+          );
+        } catch (err) {
+          setStatus(`AI designer failed: ${err && err.message ? err.message : 'Unknown error'}`, true);
+        } finally {
+          setThemeBusy(false);
+        }
+      });
+    }
 
     const actions = document.createElement('div');
     actions.className = 'theme-actions';

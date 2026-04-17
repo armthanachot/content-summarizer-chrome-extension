@@ -40,7 +40,8 @@
         "icons/icons8-markdown-36.png",
         "icons/icons8-menu-vertical-100.png",
         "icons/icons8-plus-50.png",
-        "icons/icons8-theme-48.png"
+        "icons/icons8-theme-48.png",
+        "icons/icons8-designer-64.png"
       ],
       "matches": ["<all_urls>"]
     }

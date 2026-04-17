@@ -1,4 +1,5 @@
 importScripts('expert-advisors.js');
+importScripts('ai_theme.js');
 
 // ===================== AI Provider Setup =====================
 
@@ -17,6 +18,7 @@ const PROVIDER_CONFIGS = {
       explain: 'gpt-4o-mini',
       chat: 'gpt-4o-mini',
       advisors: 'gpt-4o-mini',
+      theme: 'gpt-4o-mini',
     },
   },
   // gemini: {
@@ -44,6 +46,7 @@ const PROVIDER_CONFIGS = {
       explain: 'gemini-2.5-flash',
       chat: 'gemini-2.5-flash',
       advisors: 'gemini-2.5-flash',
+      theme: 'gemini-2.5-flash',
     },
   },
 };
@@ -268,7 +271,27 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
+
+  if (request.type === 'generate-ai-theme') {
+    generateAiTheme(
+      request.provider,
+      request.apiKey,
+      request.currentTheme,
+      request.model
+    )
+      .then((result) => sendResponse({ success: true, data: result }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
 });
+
+async function generateAiTheme(provider, apiKey, currentTheme, modelPreference) {
+  const client = await initializeAI(provider, apiKey, modelPreference);
+  const model = resolveModelSelection(client.provider, 'theme', client.modelPreference);
+  return client.provider === 'gemini'
+    ? self.AIThemeDesigner.fetchGemini(client.apiKey, model, currentTheme)
+    : self.AIThemeDesigner.fetchOpenAI(client.apiKey, model, currentTheme);
+}
 
 async function summarizeContent(
   provider,
