@@ -59,51 +59,39 @@
     },
   ];
 
-  function escapeHtml(text) {
-    return String(text || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
-  function safeRenderMarkdown(parseMarkdown, text) {
-    if (typeof parseMarkdown !== 'function') {
-      return `<pre>${escapeHtml(text)}</pre>`;
-    }
-    return parseMarkdown(text);
-  }
-
-  function renderSummarySlide(theme, parseMarkdown) {
+  function renderSummarySlide(theme) {
+    const { escapeHtml, parseMarkdown } = g.Md;
     return `
       <section class="theme-preview-surface summary">
         <header class="theme-preview-surface-header" style="background: linear-gradient(135deg, ${theme.summary.headerStart}, ${theme.summary.headerEnd}); color: ${theme.summary.headerText};">
           <span>Content Summarizer</span>
         </header>
         <div class="theme-preview-summary-source">
-          <strong>Source:</strong> https://example.com/weekly-product-report
+          <strong>Source:</strong> ${escapeHtml('https://example.com/weekly-product-report')}
         </div>
         <div class="theme-preview-summary-body" style="background:${theme.summary.summaryPanelBackground}; border-color:${theme.summary.summaryPanelBorder}; color:${theme.summary.summaryMarkdownText};">
-          ${safeRenderMarkdown(parseMarkdown, SUMMARY_MARKDOWN)}
+          ${parseMarkdown(SUMMARY_MARKDOWN)}
         </div>
       </section>
     `;
   }
 
-  function renderExplainSlide(theme, parseMarkdown) {
+  function renderExplainSlide(theme) {
+    const { parseMarkdown } = g.Md;
     return `
       <section class="theme-preview-surface explain" style="background:${theme.explain.panelBackground}; border-color:${theme.explain.borderColor}; color:${theme.explain.bodyText};">
         <header class="theme-preview-surface-header" style="background: linear-gradient(135deg, ${theme.explain.headerStart}, ${theme.explain.headerEnd}); color: ${theme.explain.headerText};">
           <span>Explain</span>
         </header>
         <div class="theme-preview-explain-body">
-          ${safeRenderMarkdown(parseMarkdown, EXPLAIN_MARKDOWN)}
+          ${parseMarkdown(EXPLAIN_MARKDOWN)}
         </div>
       </section>
     `;
   }
 
-  function renderChatConversation(theme, parseMarkdown, conversation) {
+  function renderChatConversation(theme, conversation) {
+    const { escapeHtml, parseMarkdown } = g.Md;
     const messagesHtml = (conversation.messages || [])
       .map((message) => {
         if (message.role === 'user') {
@@ -117,7 +105,7 @@
         }
         return `
           <div class="theme-preview-chat-assistant" style="background:${theme.chat.messageAssistantBackground}; color:${theme.chat.assistantMdParagraph};">
-            ${safeRenderMarkdown(parseMarkdown, message.content)}
+            ${parseMarkdown(message.content)}
           </div>
         `;
       })
@@ -125,7 +113,7 @@
 
     return `
       <article class="theme-preview-chat-conversation">
-        <h5>${escapeHtml(conversation.title || 'Conversation')}</h5>
+        <h5>${g.Md.escapeHtml(conversation.title || 'Conversation')}</h5>
         <div class="theme-preview-chat-messages">
           ${messagesHtml}
         </div>
@@ -133,9 +121,9 @@
     `;
   }
 
-  function renderChatSlide(theme, parseMarkdown) {
+  function renderChatSlide(theme) {
     const conversationsHtml = CHAT_CONVERSATIONS.map((item) =>
-      renderChatConversation(theme, parseMarkdown, item)
+      renderChatConversation(theme, item)
     ).join('');
 
     return `
@@ -150,22 +138,22 @@
     `;
   }
 
-  function buildSlides(theme, parseMarkdown) {
+  function buildSlides(theme) {
     return [
       {
         key: 'summary',
         title: 'Summary Preview',
-        html: renderSummarySlide(theme, parseMarkdown),
+        html: renderSummarySlide(theme),
       },
       {
         key: 'explain',
         title: 'Explain Preview',
-        html: renderExplainSlide(theme, parseMarkdown),
+        html: renderExplainSlide(theme),
       },
       {
         key: 'chat',
         title: 'Chat Preview',
-        html: renderChatSlide(theme, parseMarkdown),
+        html: renderChatSlide(theme),
       },
     ];
   }
