@@ -3200,6 +3200,7 @@
       saveActiveSourcePageStateIfMainModal();
     } else if (key === 'chat') {
       positionSummaryChatPopover();
+      syncSummaryChatUiFromActivePageState();
       summaryChatPopover.classList.add('visible');
       bringFloatingWindowToFront(summaryChatPopover);
       setTimeout(() => summaryChatPopover.querySelector('.summary-chat-input')?.focus(), 50);
@@ -3262,6 +3263,14 @@
       width: rect.width,
       height: rect.height,
     };
+  }
+
+  function syncSummaryChatUiFromActivePageState() {
+    if (!summaryChatPopover) return;
+    renderSummaryChatPendingImages();
+    setSummaryChatInputDisabled(summaryChatLoading);
+    renderSummaryChatMessages();
+    updateSummaryChatExpertButtonState();
   }
 
   function positionSummaryChatPopover() {
@@ -3473,8 +3482,7 @@
     positionSummaryChatPopover();
     summaryChatPopover.classList.add('visible');
     bringFloatingWindowToFront(summaryChatPopover);
-    updateSummaryChatExpertButtonState();
-    renderSummaryChatMessages();
+    syncSummaryChatUiFromActivePageState();
     setTimeout(() => summaryChatPopover.querySelector('.summary-chat-input')?.focus(), 50);
     saveActiveSourcePageStateIfMainModal();
   }
