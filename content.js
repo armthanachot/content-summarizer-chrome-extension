@@ -4731,10 +4731,26 @@
       });
     });
 
-    addPageBtn.disabled = sourcePages.length >= maxPageCount;
-    addPageBtn.title = addPageBtn.disabled
-      ? `You can add up to ${maxPageCount} pages`
-      : 'Add source page';
+    function hasSummarizedCurrentPage() {
+      return !!(originalResponse && originalResponse.trim());
+    }
+
+    function updateAddPageButtonState(locked = isLoading) {
+      const pageLimitReached = sourcePages.length >= maxPageCount;
+      const summaryRequired = !hasSummarizedCurrentPage();
+      addPageBtn.disabled = !!locked || pageLimitReached || summaryRequired;
+      if (pageLimitReached) {
+        addPageBtn.title = `You can add up to ${maxPageCount} pages`;
+        return;
+      }
+      if (summaryRequired) {
+        addPageBtn.title = 'Summarize this page first before adding a new one';
+        return;
+      }
+      addPageBtn.title = 'Add source page';
+    }
+
+    updateAddPageButtonState(isLoading);
 
     addPageBtn.addEventListener('click', () => {
       if (isLoading || sourcePages.length >= maxPageCount) return;
@@ -4858,6 +4874,7 @@
         if (summaryChatPopover && summaryChatPopover.classList.contains('visible')) {
           renderSummaryChatMessages();
         }
+        updateAddPageButtonState(true);
       } catch (err) {
         responseContent.innerHTML = `<div class="error-text">Error: ${escapeHtml(err.message)}</div>`;
         if (inputMode === 'url') {
@@ -5086,7 +5103,7 @@
       summaryActionsMenuBtn.disabled = locked || !rawResponse;
       assistantChatBtn.disabled = locked || !rawResponse;
       refreshBtn.disabled = locked;
-      addPageBtn.disabled = locked || sourcePages.length >= maxPageCount;
+      updateAddPageButtonState(locked);
       textarea.disabled = locked;
       lengthInput.disabled = locked;
       urlInput.disabled = locked || (!!getActiveSourcePage().urlLocked && urlDisplay.style.display !== 'none');
