@@ -4748,6 +4748,8 @@
     if (rawResponse) {
       expandWithResponse(divider, responsePanel);
       responseContent.innerHTML = parseMarkdown(rawResponse);
+    } else {
+      collapseMainModalToInitialWidth();
     }
     assistantChatBtn.disabled = !rawResponse;
     summaryActionsMenuBtn.disabled = !rawResponse;
@@ -5166,6 +5168,21 @@
     setTimeout(() => {
       modal.style.transition = '';
     }, 320);
+  }
+
+  function collapseMainModalToInitialWidth() {
+    const currentWidth = parseFloat(modal.style.width);
+    if (!Number.isFinite(currentWidth) || currentWidth <= INIT_W) return;
+    const currentLeft = parseFloat(modal.style.left);
+    const newLeft = Number.isFinite(currentLeft)
+      ? Math.max(10, currentLeft + (currentWidth - INIT_W) / 2)
+      : (window.innerWidth - INIT_W) / 2;
+    modal.style.transition = 'width 0.25s ease, left 0.25s ease';
+    modal.style.width = INIT_W + 'px';
+    modal.style.left = newLeft + 'px';
+    setTimeout(() => {
+      modal.style.transition = '';
+    }, 280);
   }
 
   // ===================== Drag =====================
