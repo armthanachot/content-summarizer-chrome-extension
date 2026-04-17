@@ -65,6 +65,21 @@
       messageUserEnd: '#1E3A8A',
       inputBackground: '#1E293B',
       chatInputText: '#F1F5F9',
+      assistantMdHeading: '#93C5FD',
+      assistantMdH1Underline: '#334155',
+      assistantMdParagraph: '#CBD5E1',
+      assistantMdStrong: '#F1F5F9',
+      assistantMdCodeBg: '#0F172A',
+      assistantMdCodeText: '#7DD3FC',
+      assistantMdCodeBorder: '#334155',
+      assistantMdPreBg: '#020617',
+      assistantMdPreText: '#A5F3FC',
+      assistantMdPreBorder: '#1E3A8A',
+      assistantMdLink: '#60A5FA',
+      assistantMdTableBorder: '#475569',
+      assistantMdThBg: '#334155',
+      assistantMdThText: '#E2E8F0',
+      assistantMdEvenRowBg: '#0F172A',
       sendButtonStart: '#2563EB',
       sendButtonEnd: '#1D4ED8',
     },
@@ -118,6 +133,21 @@
         { key: 'messageUserEnd', label: 'User bubble gradient end' },
         { key: 'inputBackground', label: 'Chat input background' },
         { key: 'chatInputText', label: 'Chat input text' },
+        { key: 'assistantMdHeading', label: 'Assistant markdown heading' },
+        { key: 'assistantMdH1Underline', label: 'Assistant markdown H1 underline' },
+        { key: 'assistantMdParagraph', label: 'Assistant markdown paragraph' },
+        { key: 'assistantMdStrong', label: 'Assistant markdown strong text' },
+        { key: 'assistantMdCodeBg', label: 'Assistant markdown inline code bg' },
+        { key: 'assistantMdCodeText', label: 'Assistant markdown inline code text' },
+        { key: 'assistantMdCodeBorder', label: 'Assistant markdown inline code border' },
+        { key: 'assistantMdPreBg', label: 'Assistant markdown code block bg' },
+        { key: 'assistantMdPreText', label: 'Assistant markdown code block text' },
+        { key: 'assistantMdPreBorder', label: 'Assistant markdown code block border' },
+        { key: 'assistantMdLink', label: 'Assistant markdown link' },
+        { key: 'assistantMdTableBorder', label: 'Assistant markdown table border' },
+        { key: 'assistantMdThBg', label: 'Assistant markdown table header bg' },
+        { key: 'assistantMdThText', label: 'Assistant markdown table header text' },
+        { key: 'assistantMdEvenRowBg', label: 'Assistant markdown table even row bg' },
         { key: 'sendButtonStart', label: 'Send button gradient start' },
         { key: 'sendButtonEnd', label: 'Send button gradient end' },
       ],
@@ -170,6 +200,21 @@
           messageUserEnd: '#D84315',
           inputBackground: '#3C2B27',
           chatInputText: '#FFF3EE',
+          assistantMdHeading: '#FFB089',
+          assistantMdH1Underline: '#7A4A3A',
+          assistantMdParagraph: '#FFD9CA',
+          assistantMdStrong: '#FFF3EE',
+          assistantMdCodeBg: '#2B1D1A',
+          assistantMdCodeText: '#FFB38A',
+          assistantMdCodeBorder: '#7A4A3A',
+          assistantMdPreBg: '#1F1411',
+          assistantMdPreText: '#FFD5C2',
+          assistantMdPreBorder: '#BF360C',
+          assistantMdLink: '#FF9A70',
+          assistantMdTableBorder: '#8C5A4A',
+          assistantMdThBg: '#5A3A30',
+          assistantMdThText: '#FFF3EE',
+          assistantMdEvenRowBg: '#2F211D',
           sendButtonStart: '#FF7043',
           sendButtonEnd: '#E64A19',
         },
@@ -216,6 +261,21 @@
           messageUserEnd: '#0288D1',
           inputBackground: '#1A3A4F',
           chatInputText: '#EAF7FF',
+          assistantMdHeading: '#8FD9FF',
+          assistantMdH1Underline: '#2B4F66',
+          assistantMdParagraph: '#C9EBFF',
+          assistantMdStrong: '#EAF7FF',
+          assistantMdCodeBg: '#0E2433',
+          assistantMdCodeText: '#7DDBFF',
+          assistantMdCodeBorder: '#2B4F66',
+          assistantMdPreBg: '#081A27',
+          assistantMdPreText: '#A8E7FF',
+          assistantMdPreBorder: '#1565C0',
+          assistantMdLink: '#64C7FF',
+          assistantMdTableBorder: '#3A6785',
+          assistantMdThBg: '#2B4F66',
+          assistantMdThText: '#D9F1FF',
+          assistantMdEvenRowBg: '#0F2B3D',
           sendButtonStart: '#29B6F6',
           sendButtonEnd: '#0277BD',
         },
@@ -1041,7 +1101,9 @@
     .refresh-btn:disabled,
     .assistant-chat-btn:disabled,
     .source-page-tab:disabled,
-    .source-page-add-btn:disabled {
+    .source-page-add-btn:disabled,
+    .header-btn:disabled,
+    .title-theme-btn:disabled {
       opacity: 0.55;
       cursor: not-allowed;
     }
@@ -3052,6 +3114,54 @@
       color: var(--cs-chat-text, #E2E8F0) !important;
     }
 
+    .summary-chat-msg-assistant .summary-chat-md h1,
+    .summary-chat-msg-assistant .summary-chat-md h2,
+    .summary-chat-msg-assistant .summary-chat-md h3 {
+      color: var(--cs-chat-md-heading, #93C5FD) !important;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md h1 {
+      border-bottom-color: var(--cs-chat-md-h1-underline, #334155) !important;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md p {
+      color: var(--cs-chat-md-paragraph, #CBD5E1) !important;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md strong {
+      color: var(--cs-chat-md-strong, #F1F5F9) !important;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md code {
+      background: var(--cs-chat-md-code-bg, #0F172A) !important;
+      color: var(--cs-chat-md-code-text, #7DD3FC) !important;
+      border-color: var(--cs-chat-md-code-border, #334155) !important;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md pre {
+      background: var(--cs-chat-md-pre-bg, #020617) !important;
+      color: var(--cs-chat-md-pre-text, #A5F3FC) !important;
+      border-color: var(--cs-chat-md-pre-border, #1E3A8A) !important;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md a {
+      color: var(--cs-chat-md-link, #60A5FA) !important;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md th,
+    .summary-chat-msg-assistant .summary-chat-md td {
+      border-color: var(--cs-chat-md-table-border, #475569) !important;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md th {
+      background: var(--cs-chat-md-th-bg, #334155) !important;
+      color: var(--cs-chat-md-th-text, #E2E8F0) !important;
+    }
+
+    .summary-chat-msg-assistant .summary-chat-md tbody tr:nth-child(even) td {
+      background: var(--cs-chat-md-even-row-bg, #0F172A) !important;
+    }
+
     .summary-chat-msg-user {
       background: linear-gradient(
         135deg,
@@ -3225,6 +3335,21 @@
       '--cs-chat-user-end': chat.messageUserEnd,
       '--cs-chat-input-bg': chat.inputBackground,
       '--cs-chat-input-text': chat.chatInputText,
+      '--cs-chat-md-heading': chat.assistantMdHeading,
+      '--cs-chat-md-h1-underline': chat.assistantMdH1Underline,
+      '--cs-chat-md-paragraph': chat.assistantMdParagraph,
+      '--cs-chat-md-strong': chat.assistantMdStrong,
+      '--cs-chat-md-code-bg': chat.assistantMdCodeBg,
+      '--cs-chat-md-code-text': chat.assistantMdCodeText,
+      '--cs-chat-md-code-border': chat.assistantMdCodeBorder,
+      '--cs-chat-md-pre-bg': chat.assistantMdPreBg,
+      '--cs-chat-md-pre-text': chat.assistantMdPreText,
+      '--cs-chat-md-pre-border': chat.assistantMdPreBorder,
+      '--cs-chat-md-link': chat.assistantMdLink,
+      '--cs-chat-md-table-border': chat.assistantMdTableBorder,
+      '--cs-chat-md-th-bg': chat.assistantMdThBg,
+      '--cs-chat-md-th-text': chat.assistantMdThText,
+      '--cs-chat-md-even-row-bg': chat.assistantMdEvenRowBg,
       '--cs-chat-send-start': chat.sendButtonStart,
       '--cs-chat-send-end': chat.sendButtonEnd,
     };
@@ -6111,6 +6236,11 @@
         tabBtn.disabled = locked;
       });
       toggleBtns.forEach(b => b.disabled = locked);
+      if (modalHeader) {
+        modalHeader.querySelectorAll('.header-btn, .title-theme-btn').forEach(b => {
+          b.disabled = locked;
+        });
+      }
       if (locked) {
         closeLangDropdown();
         closeSummaryActionsMenu();
