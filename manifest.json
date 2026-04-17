@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Content Summarizer",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Summarize any content using OpenAI GPT-4o mini with beautiful markdown rendering",
   "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
   "host_permissions": ["<all_urls>"],
@@ -39,7 +39,8 @@
         "icons/icons8-json-50.png",
         "icons/icons8-markdown-36.png",
         "icons/icons8-menu-vertical-100.png",
-        "icons/icons8-plus-50.png"
+        "icons/icons8-plus-50.png",
+        "icons/icons8-theme-48.png"
       ],
       "matches": ["<all_urls>"]
     }

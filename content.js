@@ -8,6 +8,7 @@
   ];
   const STORAGE_KEYS = {
     provider: 'CONTENT_SUMMARIZER_AI_PROVIDER',
+    theme: 'CONTENT_SUMMARIZER_DYNAMIC_THEME',
     tokens: {
       openai: 'CONTENT_SUMMARIZER_OPENAI_TOKEN',
       gemini: 'CONTENT_SUMMARIZER_GEMINI_TOKEN',
@@ -25,6 +26,177 @@
   const LANGUAGES = [
     { code: 'th', name: 'ไทย', flag: '🇹🇭' },
     { code: 'en', name: 'English', flag: '🇺🇸' },
+  ];
+  const DEFAULT_THEME_CONFIG = {
+    summary: {
+      modalBackground: '#E8F5E9',
+      textColor: '#2E3A2E',
+      headerStart: '#66BB6A',
+      headerEnd: '#43A047',
+      headerText: '#FFFFFF',
+      inputBackground: '#FAFFF5',
+      inputBorder: '#A5D6A7',
+      primaryStart: '#66BB6A',
+      primaryEnd: '#43A047',
+    },
+    explain: {
+      panelBackground: '#FFFFFF',
+      borderColor: '#1E3A8A',
+      headerStart: '#1A237E',
+      headerEnd: '#283593',
+      headerText: '#FFFFFF',
+      bodyText: '#1E293B',
+      accentColor: '#2563EB',
+    },
+    chat: {
+      panelBackground: '#0F172A',
+      borderColor: '#1E3A8A',
+      textColor: '#E2E8F0',
+      headerStart: '#1E3A8A',
+      headerEnd: '#172554',
+      headerText: '#F8FAFC',
+      messageAssistantBackground: '#1E293B',
+      messageUserStart: '#1D4ED8',
+      messageUserEnd: '#1E3A8A',
+      inputBackground: '#1E293B',
+      sendButtonStart: '#2563EB',
+      sendButtonEnd: '#1D4ED8',
+    },
+  };
+  const THEME_EDITOR_CONFIG = [
+    {
+      key: 'summary',
+      title: 'Content Summarizer',
+      properties: [
+        { key: 'modalBackground', label: 'Modal background' },
+        { key: 'textColor', label: 'Main text' },
+        { key: 'headerStart', label: 'Header gradient start' },
+        { key: 'headerEnd', label: 'Header gradient end' },
+        { key: 'headerText', label: 'Header text' },
+        { key: 'inputBackground', label: 'Input background' },
+        { key: 'inputBorder', label: 'Input border' },
+        { key: 'primaryStart', label: 'Primary gradient start' },
+        { key: 'primaryEnd', label: 'Primary gradient end' },
+      ],
+    },
+    {
+      key: 'explain',
+      title: 'Explain',
+      properties: [
+        { key: 'panelBackground', label: 'Panel background' },
+        { key: 'borderColor', label: 'Panel border' },
+        { key: 'headerStart', label: 'Header gradient start' },
+        { key: 'headerEnd', label: 'Header gradient end' },
+        { key: 'headerText', label: 'Header text' },
+        { key: 'bodyText', label: 'Body text' },
+        { key: 'accentColor', label: 'Accent color' },
+      ],
+    },
+    {
+      key: 'chat',
+      title: 'Chat',
+      properties: [
+        { key: 'panelBackground', label: 'Panel background' },
+        { key: 'borderColor', label: 'Panel border' },
+        { key: 'textColor', label: 'Main text' },
+        { key: 'headerStart', label: 'Header gradient start' },
+        { key: 'headerEnd', label: 'Header gradient end' },
+        { key: 'headerText', label: 'Header text' },
+        { key: 'messageAssistantBackground', label: 'Assistant bubble' },
+        { key: 'messageUserStart', label: 'User bubble gradient start' },
+        { key: 'messageUserEnd', label: 'User bubble gradient end' },
+        { key: 'inputBackground', label: 'Chat input background' },
+        { key: 'sendButtonStart', label: 'Send button gradient start' },
+        { key: 'sendButtonEnd', label: 'Send button gradient end' },
+      ],
+    },
+  ];
+  const THEME_PRESETS = [
+    {
+      key: 'forest-default',
+      label: 'Forest Default',
+      config: DEFAULT_THEME_CONFIG,
+    },
+    {
+      key: 'sunset-punch',
+      label: 'Sunset Punch',
+      config: {
+        summary: {
+          modalBackground: '#FFF4EC',
+          textColor: '#4A2B1A',
+          headerStart: '#FF8A65',
+          headerEnd: '#F4511E',
+          headerText: '#FFFFFF',
+          inputBackground: '#FFF8F2',
+          inputBorder: '#FFCCBC',
+          primaryStart: '#FF7043',
+          primaryEnd: '#E64A19',
+        },
+        explain: {
+          panelBackground: '#FFF7F5',
+          borderColor: '#C62828',
+          headerStart: '#D84315',
+          headerEnd: '#BF360C',
+          headerText: '#FFFFFF',
+          bodyText: '#4E342E',
+          accentColor: '#D84315',
+        },
+        chat: {
+          panelBackground: '#2B1D1A',
+          borderColor: '#BF360C',
+          textColor: '#FFE9DE',
+          headerStart: '#D84315',
+          headerEnd: '#8D2E10',
+          headerText: '#FFF3EE',
+          messageAssistantBackground: '#3A2A26',
+          messageUserStart: '#FF7043',
+          messageUserEnd: '#D84315',
+          inputBackground: '#3C2B27',
+          sendButtonStart: '#FF7043',
+          sendButtonEnd: '#E64A19',
+        },
+      },
+    },
+    {
+      key: 'ocean-breeze',
+      label: 'Ocean Breeze',
+      config: {
+        summary: {
+          modalBackground: '#EAF7FF',
+          textColor: '#12364D',
+          headerStart: '#4FC3F7',
+          headerEnd: '#0288D1',
+          headerText: '#FFFFFF',
+          inputBackground: '#F5FCFF',
+          inputBorder: '#B3E5FC',
+          primaryStart: '#29B6F6',
+          primaryEnd: '#0277BD',
+        },
+        explain: {
+          panelBackground: '#F4FBFF',
+          borderColor: '#1565C0',
+          headerStart: '#1976D2',
+          headerEnd: '#0D47A1',
+          headerText: '#FFFFFF',
+          bodyText: '#0E3A57',
+          accentColor: '#0288D1',
+        },
+        chat: {
+          panelBackground: '#0E2433',
+          borderColor: '#1565C0',
+          textColor: '#D9F1FF',
+          headerStart: '#1565C0',
+          headerEnd: '#0D47A1',
+          headerText: '#EAF7FF',
+          messageAssistantBackground: '#15354A',
+          messageUserStart: '#29B6F6',
+          messageUserEnd: '#0288D1',
+          inputBackground: '#1A3A4F',
+          sendButtonStart: '#29B6F6',
+          sendButtonEnd: '#0277BD',
+        },
+      },
+    },
   ];
 
   function isContextValid() {
@@ -295,6 +467,13 @@
       border-radius: 14px 14px 0 0;
     }
 
+    .modal-title-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
     .modal-title {
       font-size: 15px;
       font-weight: 700;
@@ -307,6 +486,33 @@
     .modal-title::before {
       content: '📝';
       font-size: 16px;
+    }
+
+    .title-theme-btn {
+      width: 24px;
+      height: 24px;
+      border: 1px solid rgba(255,255,255,0.34);
+      border-radius: 7px;
+      background: rgba(255,255,255,0.16);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      padding: 0;
+      flex-shrink: 0;
+    }
+
+    .title-theme-btn:hover {
+      background: rgba(255,255,255,0.28);
+      border-color: rgba(255,255,255,0.56);
+    }
+
+    .title-theme-btn img {
+      width: 14px;
+      height: 14px;
+      display: block;
+      pointer-events: none;
     }
 
     .header-actions {
@@ -433,6 +639,131 @@
       color: #c62828;
       font-size: 12px;
       min-height: 16px;
+    }
+
+    .theme-view {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      color: #2E3A2E;
+    }
+
+    .theme-view-header h3 {
+      font-size: 16px;
+      color: #2E7D32;
+      margin-bottom: 4px;
+    }
+
+    .theme-view-header p {
+      font-size: 12px;
+      color: #607d60;
+      line-height: 1.5;
+    }
+
+    .theme-section-card {
+      border: 1px solid #C8E6C9;
+      background: #FAFFF5;
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .theme-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #2E7D32;
+    }
+
+    .theme-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 28px;
+    }
+
+    .theme-row-label {
+      font-size: 12px;
+      color: #486348;
+      flex: 1;
+    }
+
+    .theme-color-input {
+      width: 38px;
+      height: 26px;
+      border: 1px solid #B6D9B7;
+      border-radius: 6px;
+      background: transparent;
+      cursor: pointer;
+      padding: 0;
+      flex-shrink: 0;
+    }
+
+    .theme-color-value {
+      width: 80px;
+      font-size: 11px;
+      color: #607d60;
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+      flex-shrink: 0;
+    }
+
+    .theme-actions {
+      display: flex;
+      gap: 10px;
+      padding-top: 4px;
+    }
+
+    .theme-toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 4px;
+    }
+
+    .theme-preset-select {
+      min-width: 170px;
+      border: 1px solid #B6D9B7;
+      border-radius: 8px;
+      padding: 6px 10px;
+      background: #FFFFFF;
+      color: #2E3A2E;
+      font-size: 12px;
+      font-family: inherit;
+    }
+
+    .theme-toolbar-btn {
+      border: 1px solid #B6D9B7;
+      background: #FFFFFF;
+      color: #2E7D32;
+      border-radius: 8px;
+      font-size: 12px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1.2;
+    }
+
+    .theme-toolbar-btn:hover {
+      background: #F1F8E9;
+      border-color: #81C784;
+    }
+
+    .theme-import-input {
+      display: none;
+    }
+
+    .theme-status {
+      min-height: 16px;
+      font-size: 12px;
+      color: #607d60;
+      margin-top: 2px;
     }
 
     /* ===== Input Panel ===== */
@@ -2455,11 +2786,156 @@
     .summary-chat-minimize:hover {
       background: rgba(255, 255, 255, 0.3);
     }
+
+    /* ===== Dynamic Theme Overrides ===== */
+
+    .modal {
+      background: var(--cs-summary-modal-bg, #E8F5E9) !important;
+      color: var(--cs-summary-text-color, #2E3A2E) !important;
+    }
+
+    .modal-header {
+      background: linear-gradient(
+        135deg,
+        var(--cs-summary-header-start, #66BB6A) 0%,
+        var(--cs-summary-header-end, #43A047) 100%
+      ) !important;
+      color: var(--cs-summary-header-text, #FFFFFF) !important;
+    }
+
+    .header-btn,
+    .title-theme-btn {
+      color: var(--cs-summary-header-text, #FFFFFF) !important;
+    }
+
+    .key-view .key-input,
+    .content-input,
+    .url-input,
+    .option-row input[type="number"],
+    .theme-section-card {
+      background: var(--cs-summary-input-bg, #FAFFF5) !important;
+      border-color: var(--cs-summary-input-border, #A5D6A7) !important;
+      color: var(--cs-summary-text-color, #2E3A2E) !important;
+    }
+
+    .btn-summarize,
+    .key-view .save-btn,
+    .source-page-tab.active {
+      background: linear-gradient(
+        135deg,
+        var(--cs-summary-primary-start, #66BB6A),
+        var(--cs-summary-primary-end, #43A047)
+      ) !important;
+      border-color: var(--cs-summary-primary-end, #43A047) !important;
+      color: #fff !important;
+    }
+
+    .source-page-tab {
+      color: var(--cs-summary-primary-end, #43A047) !important;
+      border-color: var(--cs-summary-primary-start, #66BB6A) !important;
+    }
+
+    .word-explain-popover {
+      background: var(--cs-explain-panel-bg, #FFFFFF) !important;
+      border-color: var(--cs-explain-border, #1E3A8A) !important;
+      color: var(--cs-explain-text, #1E293B) !important;
+    }
+
+    .word-explain-popover-header {
+      background: linear-gradient(
+        135deg,
+        var(--cs-explain-header-start, #1A237E) 0%,
+        var(--cs-explain-header-end, #283593) 100%
+      ) !important;
+      border-bottom-color: var(--cs-explain-border, #1E3A8A) !important;
+    }
+
+    .word-explain-popover-title,
+    .word-explain-popover-term,
+    .word-explain-popover-close {
+      color: var(--cs-explain-header-text, #FFFFFF) !important;
+    }
+
+    .word-explain-popover-body,
+    .word-explain-popover-body p,
+    .word-explain-popover-body li {
+      background: var(--cs-explain-panel-bg, #FFFFFF) !important;
+      color: var(--cs-explain-text, #1E293B) !important;
+    }
+
+    .word-explain-popover-body h1,
+    .word-explain-popover-body h2,
+    .word-explain-popover-body h3,
+    .word-explain-popover-body h4,
+    .word-explain-popover-body strong,
+    .word-explain-popover-body a {
+      color: var(--cs-explain-accent, #2563EB) !important;
+    }
+
+    .summary-chat-popover {
+      background: var(--cs-chat-panel-bg, #0F172A) !important;
+      border-color: var(--cs-chat-border, #1E3A8A) !important;
+      color: var(--cs-chat-text, #E2E8F0) !important;
+    }
+
+    .summary-chat-header {
+      background: linear-gradient(
+        135deg,
+        var(--cs-chat-header-start, #1E3A8A) 0%,
+        var(--cs-chat-header-end, #172554) 100%
+      ) !important;
+      border-bottom-color: var(--cs-chat-border, #1E3A8A) !important;
+    }
+
+    .summary-chat-title,
+    .summary-chat-close,
+    .summary-chat-minimize,
+    .summary-chat-copy-json,
+    .summary-chat-new-thread,
+    .summary-chat-expert-btn {
+      color: var(--cs-chat-header-text, #F8FAFC) !important;
+    }
+
+    .summary-chat-messages,
+    .summary-chat-footer,
+    .summary-chat-input-media {
+      background: var(--cs-chat-panel-bg, #0F172A) !important;
+      border-color: var(--cs-chat-border, #1E3A8A) !important;
+    }
+
+    .summary-chat-msg-assistant,
+    .summary-chat-advisor-item,
+    .summary-chat-input-wrap {
+      background: var(--cs-chat-assistant-bg, #1E293B) !important;
+      color: var(--cs-chat-text, #E2E8F0) !important;
+    }
+
+    .summary-chat-msg-user {
+      background: linear-gradient(
+        135deg,
+        var(--cs-chat-user-start, #1D4ED8) 0%,
+        var(--cs-chat-user-end, #1E3A8A) 100%
+      ) !important;
+    }
+
+    .summary-chat-input-wrap {
+      border-color: var(--cs-chat-border, #1E3A8A) !important;
+      background: var(--cs-chat-input-bg, #1E293B) !important;
+    }
+
+    .summary-chat-send {
+      background: linear-gradient(
+        135deg,
+        var(--cs-chat-send-start, #2563EB) 0%,
+        var(--cs-chat-send-end, #1D4ED8) 100%
+      ) !important;
+    }
   `;
 
   // ===================== State =====================
 
   let currentProvider = DEFAULT_PROVIDER;
+  let themeConfig = cloneJsonSafe(DEFAULT_THEME_CONFIG, DEFAULT_THEME_CONFIG);
   let apiTokens = {
     openai: '',
     gemini: '',
@@ -2544,6 +3020,68 @@
     } catch {
       return fallback;
     }
+  }
+
+  function normalizeHexColor(value, fallback) {
+    if (typeof value !== 'string') return fallback;
+    const normalized = value.trim().toUpperCase();
+    return /^#[0-9A-F]{6}$/.test(normalized) ? normalized : fallback;
+  }
+
+  function sanitizeThemeConfig(candidate) {
+    const safe = cloneJsonSafe(DEFAULT_THEME_CONFIG, DEFAULT_THEME_CONFIG);
+    const incoming = candidate && typeof candidate === 'object' ? candidate : {};
+    Object.keys(safe).forEach((sectionKey) => {
+      const sectionDefaults = safe[sectionKey];
+      const sectionIncoming = incoming[sectionKey] && typeof incoming[sectionKey] === 'object'
+        ? incoming[sectionKey]
+        : {};
+      Object.keys(sectionDefaults).forEach((propKey) => {
+        sectionDefaults[propKey] = normalizeHexColor(sectionIncoming[propKey], sectionDefaults[propKey]);
+      });
+    });
+    return safe;
+  }
+
+  function applyThemeConfigToUi() {
+    if (!modalRoot) return;
+    const summary = themeConfig.summary;
+    const explain = themeConfig.explain;
+    const chat = themeConfig.chat;
+
+    const cssVars = {
+      '--cs-summary-modal-bg': summary.modalBackground,
+      '--cs-summary-text-color': summary.textColor,
+      '--cs-summary-header-start': summary.headerStart,
+      '--cs-summary-header-end': summary.headerEnd,
+      '--cs-summary-header-text': summary.headerText,
+      '--cs-summary-input-bg': summary.inputBackground,
+      '--cs-summary-input-border': summary.inputBorder,
+      '--cs-summary-primary-start': summary.primaryStart,
+      '--cs-summary-primary-end': summary.primaryEnd,
+      '--cs-explain-panel-bg': explain.panelBackground,
+      '--cs-explain-border': explain.borderColor,
+      '--cs-explain-header-start': explain.headerStart,
+      '--cs-explain-header-end': explain.headerEnd,
+      '--cs-explain-header-text': explain.headerText,
+      '--cs-explain-text': explain.bodyText,
+      '--cs-explain-accent': explain.accentColor,
+      '--cs-chat-panel-bg': chat.panelBackground,
+      '--cs-chat-border': chat.borderColor,
+      '--cs-chat-text': chat.textColor,
+      '--cs-chat-header-start': chat.headerStart,
+      '--cs-chat-header-end': chat.headerEnd,
+      '--cs-chat-header-text': chat.headerText,
+      '--cs-chat-assistant-bg': chat.messageAssistantBackground,
+      '--cs-chat-user-start': chat.messageUserStart,
+      '--cs-chat-user-end': chat.messageUserEnd,
+      '--cs-chat-input-bg': chat.inputBackground,
+      '--cs-chat-send-start': chat.sendButtonStart,
+      '--cs-chat-send-end': chat.sendButtonEnd,
+    };
+    Object.entries(cssVars).forEach(([key, val]) => {
+      modalRoot.style.setProperty(key, val);
+    });
   }
 
   function createSourcePage(initialText) {
@@ -3639,12 +4177,15 @@
           STORAGE_KEYS.provider,
           STORAGE_KEYS.tokens.openai,
           STORAGE_KEYS.tokens.gemini,
+          STORAGE_KEYS.theme,
         ],
         (result) => {
           if (!isContextValid()) return;
           currentProvider = normalizeProvider(result[STORAGE_KEYS.provider]);
           setTokenForProvider('openai', result[STORAGE_KEYS.tokens.openai] || '');
           setTokenForProvider('gemini', result[STORAGE_KEYS.tokens.gemini] || '');
+          themeConfig = sanitizeThemeConfig(result[STORAGE_KEYS.theme]);
+          applyThemeConfigToUi();
           finish();
         }
       );
@@ -3919,7 +4460,12 @@
     modalHeader = document.createElement('div');
     modalHeader.className = 'modal-header';
     modalHeader.innerHTML = `
-      <span class="modal-title">Content Summarizer</span>
+      <div class="modal-title-wrap">
+        <span class="modal-title">Content Summarizer</span>
+        <button class="title-theme-btn" type="button" title="Theme setup" aria-label="Theme setup">
+          <img alt="" />
+        </button>
+      </div>
       <div class="header-actions">
         <button class="header-btn settings-btn" title="API Key Settings">⚙</button>
         <button type="button" class="header-btn minimize-btn" title="Minimize">−</button>
@@ -3934,6 +4480,15 @@
 
     modalShadow.appendChild(modal);
     document.body.appendChild(modalRoot);
+    applyThemeConfigToUi();
+
+    const titleThemeBtn = modalHeader.querySelector('.title-theme-btn');
+    const titleThemeImg = titleThemeBtn && titleThemeBtn.querySelector('img');
+    if (titleThemeImg) {
+      try {
+        titleThemeImg.src = chrome.runtime.getURL('icons/icons8-theme-48.png');
+      } catch {}
+    }
 
     // ===================== Word Explainer Elements =====================
 
@@ -4264,6 +4819,12 @@
       showKeyView();
     });
 
+    if (titleThemeBtn) {
+      titleThemeBtn.addEventListener('click', () => {
+        showThemeSetupView();
+      });
+    }
+
     ['keydown', 'keypress', 'keyup'].forEach((evtType) => {
       modal.addEventListener(evtType, (e) => e.stopPropagation());
     });
@@ -4328,12 +4889,15 @@
           STORAGE_KEYS.provider,
           STORAGE_KEYS.tokens.openai,
           STORAGE_KEYS.tokens.gemini,
+          STORAGE_KEYS.theme,
         ],
         (result) => {
           if (!isContextValid()) return;
           currentProvider = normalizeProvider(result[STORAGE_KEYS.provider]);
           setTokenForProvider('openai', result[STORAGE_KEYS.tokens.openai] || '');
           setTokenForProvider('gemini', result[STORAGE_KEYS.tokens.gemini] || '');
+          themeConfig = sanitizeThemeConfig(result[STORAGE_KEYS.theme]);
+          applyThemeConfigToUi();
           if (getActiveApiKey()) showMainView();
         }
       );
@@ -4421,6 +4985,196 @@
     });
 
     setTimeout(() => input.focus(), 50);
+  }
+
+  function showThemeSetupView() {
+    modalBody.innerHTML = '';
+
+    const view = document.createElement('div');
+    view.className = 'theme-view';
+    view.innerHTML = `
+      <div class="theme-view-header">
+        <h3>Theme Setup</h3>
+        <p>Customize colors for each section: Content Summarizer, Explain, and Chat. Changes are saved locally in your browser.</p>
+        <div class="theme-toolbar">
+          <select class="theme-preset-select"></select>
+          <button type="button" class="theme-toolbar-btn theme-apply-preset-btn">Apply Preset</button>
+          <button type="button" class="theme-toolbar-btn theme-reset-btn">Reset Default</button>
+          <button type="button" class="theme-toolbar-btn theme-import-btn">Import JSON</button>
+          <button type="button" class="theme-toolbar-btn theme-export-btn">Export JSON</button>
+          <input type="file" class="theme-import-input" accept="application/json,.json" />
+        </div>
+        <div class="theme-status" aria-live="polite"></div>
+      </div>
+    `;
+    modalBody.appendChild(view);
+
+    const draftTheme = sanitizeThemeConfig(themeConfig);
+    const inputRefs = {};
+    const statusEl = view.querySelector('.theme-status');
+
+    function setStatus(text, isError) {
+      statusEl.textContent = text || '';
+      statusEl.style.color = isError ? '#C62828' : '#607d60';
+    }
+
+    THEME_EDITOR_CONFIG.forEach((section) => {
+      const card = document.createElement('div');
+      card.className = 'theme-section-card';
+      inputRefs[section.key] = {};
+
+      const title = document.createElement('div');
+      title.className = 'theme-section-title';
+      title.textContent = section.title;
+      card.appendChild(title);
+
+      section.properties.forEach((prop) => {
+        const row = document.createElement('label');
+        row.className = 'theme-row';
+
+        const name = document.createElement('span');
+        name.className = 'theme-row-label';
+        name.textContent = prop.label;
+
+        const colorInput = document.createElement('input');
+        colorInput.className = 'theme-color-input';
+        colorInput.type = 'color';
+        colorInput.value = draftTheme[section.key][prop.key];
+        inputRefs[section.key][prop.key] = colorInput;
+
+        const valueEl = document.createElement('span');
+        valueEl.className = 'theme-color-value';
+        valueEl.textContent = colorInput.value.toUpperCase();
+
+        colorInput.addEventListener('input', () => {
+          draftTheme[section.key][prop.key] = colorInput.value.toUpperCase();
+          valueEl.textContent = draftTheme[section.key][prop.key];
+        });
+
+        row.appendChild(name);
+        row.appendChild(colorInput);
+        row.appendChild(valueEl);
+        card.appendChild(row);
+      });
+
+      view.appendChild(card);
+    });
+
+    function syncInputsFromDraft() {
+      THEME_EDITOR_CONFIG.forEach((section) => {
+        section.properties.forEach((prop) => {
+          const inputEl = inputRefs[section.key] && inputRefs[section.key][prop.key];
+          if (!inputEl) return;
+          const nextColor = draftTheme[section.key][prop.key];
+          inputEl.value = nextColor;
+          const valueEl = inputEl.parentElement && inputEl.parentElement.querySelector('.theme-color-value');
+          if (valueEl) valueEl.textContent = nextColor;
+        });
+      });
+    }
+
+    const presetSelect = view.querySelector('.theme-preset-select');
+    const applyPresetBtn = view.querySelector('.theme-apply-preset-btn');
+    const resetBtn = view.querySelector('.theme-reset-btn');
+    const importBtn = view.querySelector('.theme-import-btn');
+    const exportBtn = view.querySelector('.theme-export-btn');
+    const importInput = view.querySelector('.theme-import-input');
+
+    presetSelect.innerHTML = THEME_PRESETS.map((preset) => {
+      return `<option value="${preset.key}">${preset.label}</option>`;
+    }).join('');
+
+    applyPresetBtn.addEventListener('click', () => {
+      const preset = THEME_PRESETS.find((item) => item.key === presetSelect.value);
+      if (!preset) return;
+      const applied = sanitizeThemeConfig(preset.config);
+      Object.keys(applied).forEach((sectionKey) => {
+        Object.keys(applied[sectionKey]).forEach((propKey) => {
+          draftTheme[sectionKey][propKey] = applied[sectionKey][propKey];
+        });
+      });
+      syncInputsFromDraft();
+      setStatus(`Applied preset: ${preset.label}`, false);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      const reset = sanitizeThemeConfig(DEFAULT_THEME_CONFIG);
+      Object.keys(reset).forEach((sectionKey) => {
+        Object.keys(reset[sectionKey]).forEach((propKey) => {
+          draftTheme[sectionKey][propKey] = reset[sectionKey][propKey];
+        });
+      });
+      syncInputsFromDraft();
+      setStatus('Theme reset to default values.', false);
+    });
+
+    importBtn.addEventListener('click', () => {
+      importInput.value = '';
+      importInput.click();
+    });
+
+    importInput.addEventListener('change', async () => {
+      const file = importInput.files && importInput.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const imported = sanitizeThemeConfig(parsed);
+        Object.keys(imported).forEach((sectionKey) => {
+          Object.keys(imported[sectionKey]).forEach((propKey) => {
+            draftTheme[sectionKey][propKey] = imported[sectionKey][propKey];
+          });
+        });
+        syncInputsFromDraft();
+        setStatus(`Imported theme from ${file.name}`, false);
+      } catch (err) {
+        setStatus(`Import failed: ${err && err.message ? err.message : 'Invalid JSON file'}`, true);
+      }
+    });
+
+    exportBtn.addEventListener('click', () => {
+      try {
+        const dataStr = JSON.stringify(sanitizeThemeConfig(draftTheme), null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'content-summarizer-theme.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setStatus('Exported current draft theme as JSON.', false);
+      } catch {
+        setStatus('Export failed.', true);
+      }
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'theme-actions';
+    actions.innerHTML = `
+      <button type="button" class="btn btn-summarize theme-save-btn">Save Theme</button>
+      <button type="button" class="btn btn-clear theme-cancel-btn">Cancel</button>
+    `;
+    view.appendChild(actions);
+
+    const saveBtn = actions.querySelector('.theme-save-btn');
+    const cancelBtn = actions.querySelector('.theme-cancel-btn');
+
+    saveBtn.addEventListener('click', () => {
+      themeConfig = sanitizeThemeConfig(draftTheme);
+      applyThemeConfigToUi();
+      try {
+        chrome.storage.local.set({
+          [STORAGE_KEYS.theme]: themeConfig,
+        });
+      } catch {}
+      showMainView();
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      showMainView();
+    });
   }
 
   function showMainView() {
@@ -5683,12 +6437,15 @@
         STORAGE_KEYS.provider,
         STORAGE_KEYS.tokens.openai,
         STORAGE_KEYS.tokens.gemini,
+        STORAGE_KEYS.theme,
       ],
       (result) => {
         if (!isContextValid()) return;
         currentProvider = normalizeProvider(result[STORAGE_KEYS.provider]);
         setTokenForProvider('openai', result[STORAGE_KEYS.tokens.openai] || '');
         setTokenForProvider('gemini', result[STORAGE_KEYS.tokens.gemini] || '');
+        themeConfig = sanitizeThemeConfig(result[STORAGE_KEYS.theme]);
+        applyThemeConfigToUi();
       }
     );
   } catch {}
