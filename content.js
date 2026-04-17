@@ -664,6 +664,12 @@
       gap: 8px;
     }
 
+    .url-input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .url-input {
       width: 100%;
       border: 2px solid #A5D6A7;
@@ -680,6 +686,42 @@
     .url-input:focus { border-color: #43A047; }
     .url-input::placeholder { color: #9CAF9C; }
     .url-input:disabled { opacity: 0.55; cursor: not-allowed; background: #EDF7ED; border-color: #C8E6C9; }
+
+    .url-input-row .url-input {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .url-paste-btn {
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      border: 2px solid #A5D6A7;
+      border-radius: 8px;
+      background: #F1F8E9;
+      color: #2E7D32;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+      font-family: inherit;
+    }
+
+    .url-paste-btn:hover:not(:disabled) {
+      border-color: #66BB6A;
+      background: #E8F5E9;
+      transform: translateY(-1px);
+    }
+
+    .url-paste-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
 
     .url-display {
       display: flex;
@@ -4284,7 +4326,10 @@
       </div>
       <textarea class="content-input" placeholder="Paste or type your content here to summarize..."></textarea>
       <div class="url-section" style="display:none">
-        <input type="url" class="url-input" placeholder="Enter a URL to summarize (e.g., https://example.com/article)" />
+        <div class="url-input-row">
+          <input type="url" class="url-input" placeholder="Enter a URL to summarize (e.g., https://example.com/article)" />
+          <button type="button" class="url-paste-btn" title="Paste URL from clipboard" aria-label="Paste URL from clipboard">📋</button>
+        </div>
         <div class="url-display" style="display:none">
           <span class="url-display-text"></span>
           <button class="url-open-btn">Open ↗</button>
@@ -4345,6 +4390,7 @@
     const clearBtn = inputPanel.querySelector('.btn-clear');
     const urlSection = inputPanel.querySelector('.url-section');
     const urlInput = inputPanel.querySelector('.url-input');
+    const urlPasteBtn = inputPanel.querySelector('.url-paste-btn');
     const urlDisplay = inputPanel.querySelector('.url-display');
     const urlDisplayText = inputPanel.querySelector('.url-display-text');
     const urlOpenBtn = inputPanel.querySelector('.url-open-btn');
@@ -4496,6 +4542,37 @@
     urlOpenBtn.addEventListener('click', () => {
       const url = urlInput.value.trim();
       if (url) window.open(url, '_blank');
+    });
+
+    urlPasteBtn.addEventListener('click', async () => {
+      if (isLoading) return;
+      const oldHtml = urlPasteBtn.innerHTML;
+      try {
+        const clipboardText = await navigator.clipboard.readText();
+        const pastedUrl = (clipboardText || '').trim();
+        if (!pastedUrl) {
+          urlPasteBtn.innerHTML = '⚠️';
+          setTimeout(() => {
+            urlPasteBtn.innerHTML = oldHtml;
+          }, 1200);
+          return;
+        }
+        urlInput.disabled = false;
+        urlDisplay.style.display = 'none';
+        urlInput.value = pastedUrl;
+        urlInput.focus();
+        urlInput.select();
+        persistActiveInputState();
+        urlPasteBtn.innerHTML = '✓';
+        setTimeout(() => {
+          urlPasteBtn.innerHTML = oldHtml;
+        }, 1200);
+      } catch {
+        urlPasteBtn.innerHTML = '✕';
+        setTimeout(() => {
+          urlPasteBtn.innerHTML = oldHtml;
+        }, 1200);
+      }
     });
 
     textarea.addEventListener('input', persistActiveInputState);
@@ -4856,6 +4933,7 @@
       textarea.disabled = locked;
       lengthInput.disabled = locked;
       urlInput.disabled = locked || (!!getActiveSourcePage().urlLocked && urlDisplay.style.display !== 'none');
+      urlPasteBtn.disabled = locked;
       pageTabs.forEach((tabBtn) => {
         tabBtn.disabled = locked;
       });
