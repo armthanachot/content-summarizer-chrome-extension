@@ -494,30 +494,8 @@
     }
 
     .source-page-add-btn {
-      width: 28px;
-      height: 28px;
-      border: 1.5px solid #66BB6A;
-      border-radius: 7px;
-      background: #fff;
-      color: #43A047;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: all 0.2s;
-      padding: 0;
-    }
-
-    .source-page-add-btn img {
-      width: 16px;
-      height: 16px;
-      display: block;
-    }
-
-    .source-page-add-btn:hover:not(:disabled) {
-      background: #F1F8E9;
-      border-color: #43A047;
+      font-size: 18px;
+      line-height: 1;
     }
 
     .content-input {
@@ -4200,7 +4178,7 @@
     inputPanel.innerHTML = `
       <div class="source-pages-row">
         <div class="source-pages-list">${tabsHtml}</div>
-        <button type="button" class="source-page-add-btn" title="Add source page" aria-label="Add source page"></button>
+        <button type="button" class="source-page-tab source-page-add-btn" title="Add source page" aria-label="Add source page">+</button>
       </div>
       <div class="input-toggle-row">
         <div class="input-toggle">
@@ -4361,13 +4339,6 @@
     } catch {}
     menuDotsImg.alt = '';
     summaryActionsMenuBtn.appendChild(menuDotsImg);
-
-    const addPageIcon = document.createElement('img');
-    try {
-      addPageIcon.src = chrome.runtime.getURL('icons/icons8-plus-50.png');
-    } catch {}
-    addPageIcon.alt = '';
-    addPageBtn.appendChild(addPageIcon);
 
     if (selectedLang !== 'auto') {
       const selectedLangItem = LANGUAGES.find((lang) => lang.code === selectedLang);
