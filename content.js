@@ -2398,6 +2398,8 @@
   let sourcePages = [];
   let activeSourcePageId = '';
   let sourcePageIdSeed = 0;
+  let explainRequestIdSeed = 0;
+  let summaryChatRequestIdSeed = 0;
   let floatingWindowTopZIndex = FLOATING_STACK_ROOT_Z_INDEX + 4;
 
   let modalRoot = null;
@@ -2483,6 +2485,8 @@
       responseCache: {},
       summaryChatMessages: [],
       summaryChatPendingImages: [],
+      summaryChatLoading: false,
+      summaryChatRequestId: 0,
       summaryChatLastError: '',
       summaryChatAdvisors: [],
       summaryChatAdvisorPersona: null,
@@ -2492,6 +2496,7 @@
       explainRect: null,
       explainTerm: '',
       explainBodyHtml: '',
+      explainRequestId: 0,
       chatVisible: false,
       explainVisible: false,
     };
@@ -2520,6 +2525,12 @@
     return sourcePages[idx];
   }
 
+  function getSourcePageById(pageId) {
+    if (!pageId) return null;
+    const page = sourcePages.find((item) => item.id === pageId);
+    return page || null;
+  }
+
   function loadActiveSourcePageState() {
     const page = getActiveSourcePage();
     rawResponse = page.rawResponse || '';
@@ -2528,7 +2539,11 @@
     responseCache = cloneJsonSafe(page.responseCache || {}, {});
     summaryChatMessages = cloneJsonSafe(page.summaryChatMessages || [], []);
     summaryChatPendingImages = cloneJsonSafe(page.summaryChatPendingImages || [], []);
+    summaryChatLoading = !!page.summaryChatLoading;
     summaryChatLastError = page.summaryChatLastError || '';
+    page.summaryChatRequestId = Number.isFinite(page.summaryChatRequestId)
+      ? page.summaryChatRequestId
+      : 0;
     summaryChatAdvisors = cloneJsonSafe(page.summaryChatAdvisors || [], []);
     summaryChatAdvisorPersona = cloneJsonSafe(page.summaryChatAdvisorPersona, null);
     summaryChatAdvisorSelectedValue = page.summaryChatAdvisorSelectedValue || '';
@@ -2541,6 +2556,7 @@
     explainRect = cloneJsonSafe(page.explainRect, null);
     explainTerm = page.explainTerm || '';
     explainBodyHtml = page.explainBodyHtml || '';
+    page.explainRequestId = Number.isFinite(page.explainRequestId) ? page.explainRequestId : 0;
   }
 
   function saveActiveSourcePageState() {
@@ -2551,7 +2567,11 @@
     page.responseCache = cloneJsonSafe(responseCache || {}, {});
     page.summaryChatMessages = cloneJsonSafe(summaryChatMessages || [], []);
     page.summaryChatPendingImages = cloneJsonSafe(summaryChatPendingImages || [], []);
+    page.summaryChatLoading = !!summaryChatLoading;
     page.summaryChatLastError = summaryChatLastError || '';
+    page.summaryChatRequestId = Number.isFinite(page.summaryChatRequestId)
+      ? page.summaryChatRequestId
+      : 0;
     page.summaryChatAdvisors = cloneJsonSafe(summaryChatAdvisors || [], []);
     page.summaryChatAdvisorPersona = cloneJsonSafe(summaryChatAdvisorPersona, null);
     page.summaryChatAdvisorSelectedValue = summaryChatAdvisorSelectedValue || '';
@@ -2560,6 +2580,7 @@
     page.explainRect = cloneJsonSafe(explainRect, null);
     page.explainTerm = explainTerm || '';
     page.explainBodyHtml = explainBodyHtml || '';
+    page.explainRequestId = Number.isFinite(page.explainRequestId) ? page.explainRequestId : 0;
     page.chatVisible = !!(
       summaryChatPopover &&
       summaryChatPopover.classList.contains('visible') &&
@@ -3549,6 +3570,9 @@
 
   async function sendSummaryChatTurn() {
     if (!summaryChatPopover || summaryChatLoading) return;
+    const requestPageId = activeSourcePageId;
+    const requestPage = getSourcePageById(requestPageId);
+    if (!requestPage) return;
     const input = summaryChatPopover.querySelector('.summary-chat-input');
     const text = (input && input.value ? input.value : '').trim();
     const pendingImages = summaryChatPendingImages.map((img) => ({
@@ -3559,15 +3583,23 @@
     const context = (rawResponse || '').trim();
     if (!context) return;
 
+    const requestId = ++summaryChatRequestIdSeed;
+    requestPage.summaryChatRequestId = requestId;
     summaryChatLastError = '';
     input.value = '';
     summaryChatMessages.push({ role: 'user', content: text, images: pendingImages });
     summaryChatPendingImages = [];
+    requestPage.summaryChatMessages = cloneJsonSafe(summaryChatMessages, []);
+    requestPage.summaryChatPendingImages = [];
+    requestPage.summaryChatLastError = '';
+    requestPage.summaryChatLoading = true;
     saveActiveSourcePageStateIfMainModal();
     renderSummaryChatPendingImages();
     summaryChatLoading = true;
     setSummaryChatInputDisabled(true);
     renderSummaryChatMessages();
+    const requestMessages = cloneJsonSafe(requestPage.summaryChatMessages, []);
+    const requestAdvisorPersona = cloneJsonSafe(summaryChatAdvisorPersona, null);
 
     try {
       if (!isContextValid()) throw new Error('Extension was reloaded. Please refresh the page.');
@@ -3580,8 +3612,8 @@
               apiKey: getActiveApiKey(),
               summaryContext: context,
               sourceUrl: summarySourceUrl,
-              messages: summaryChatMessages,
-              advisorPersona: summaryChatAdvisorPersona,
+              messages: requestMessages,
+              advisorPersona: requestAdvisorPersona,
             },
             (resp) => {
               if (chrome.runtime.lastError) {
@@ -3600,14 +3632,34 @@
           reject(e);
         }
       });
-      summaryChatMessages.push({ role: 'assistant', content: reply });
+      const targetPage = getSourcePageById(requestPageId);
+      if (!targetPage || targetPage.summaryChatRequestId !== requestId) return;
+      targetPage.summaryChatMessages = Array.isArray(targetPage.summaryChatMessages)
+        ? targetPage.summaryChatMessages
+        : [];
+      targetPage.summaryChatMessages.push({ role: 'assistant', content: reply });
+      targetPage.summaryChatLoading = false;
+      targetPage.summaryChatLastError = '';
+      if (activeSourcePageId === requestPageId) {
+        summaryChatMessages = cloneJsonSafe(targetPage.summaryChatMessages, []);
+        summaryChatLoading = false;
+        summaryChatLastError = '';
+      }
       saveActiveSourcePageStateIfMainModal();
     } catch (err) {
-      summaryChatLastError = err.message || String(err);
+      const targetPage = getSourcePageById(requestPageId);
+      if (!targetPage || targetPage.summaryChatRequestId !== requestId) return;
+      targetPage.summaryChatLoading = false;
+      targetPage.summaryChatLastError = err.message || String(err);
+      if (activeSourcePageId === requestPageId) {
+        summaryChatLoading = false;
+        summaryChatLastError = targetPage.summaryChatLastError;
+      }
       saveActiveSourcePageStateIfMainModal();
     } finally {
-      summaryChatLoading = false;
-      setSummaryChatInputDisabled(false);
+      const currentActivePage = getSourcePageById(activeSourcePageId);
+      summaryChatLoading = !!(currentActivePage && currentActivePage.summaryChatLoading);
+      setSummaryChatInputDisabled(summaryChatLoading);
       renderSummaryChatMessages();
     }
   }
@@ -5421,6 +5473,10 @@
             <span>Explaining...</span>
           </div>
         `;
+        const requestPageId = activeSourcePageId;
+        const requestId = ++explainRequestIdSeed;
+        const requestPage = getSourcePageById(requestPageId);
+        if (requestPage) requestPage.explainRequestId = requestId;
         termEl.textContent = explainTerm;
         bodyEl.innerHTML = explainBodyHtml;
         minimizedPanels.delete('explain');
@@ -5454,17 +5510,23 @@
                 );
               } catch (err) { reject(err); }
             });
-            if (wordExplainPopover.classList.contains('visible')) {
-              explainBodyHtml = parseMarkdown(result);
+            const targetPage = getSourcePageById(requestPageId);
+            if (!targetPage || targetPage.explainRequestId !== requestId) return;
+            targetPage.explainBodyHtml = parseMarkdown(result);
+            if (activeSourcePageId === requestPageId && wordExplainPopover.classList.contains('visible')) {
+              explainBodyHtml = targetPage.explainBodyHtml;
               bodyEl.innerHTML = explainBodyHtml;
-              saveActiveSourcePageStateIfMainModal();
             }
+            saveActiveSourcePageStateIfMainModal();
           } catch (err) {
-            if (wordExplainPopover.classList.contains('visible')) {
-              explainBodyHtml = `<div class="error-text">Error: ${escapeHtml(err.message)}</div>`;
+            const targetPage = getSourcePageById(requestPageId);
+            if (!targetPage || targetPage.explainRequestId !== requestId) return;
+            targetPage.explainBodyHtml = `<div class="error-text">Error: ${escapeHtml(err.message)}</div>`;
+            if (activeSourcePageId === requestPageId && wordExplainPopover.classList.contains('visible')) {
+              explainBodyHtml = targetPage.explainBodyHtml;
               bodyEl.innerHTML = explainBodyHtml;
-              saveActiveSourcePageStateIfMainModal();
             }
+            saveActiveSourcePageStateIfMainModal();
           }
         })();
 
