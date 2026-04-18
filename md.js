@@ -50,21 +50,27 @@
       let s = t;
       if (s.startsWith('|')) s = s.slice(1);
       if (s.endsWith('|')) s = s.slice(0, -1);
+      s = s.trim();
+      // Pipe-wrapped single column: "| Header |" → inner has no "|"
+      if (!s.includes('|')) {
+        return s.length ? [s] : null;
+      }
       const parts = s.split('|').map((cell) => cell.trim());
-      if (parts.length < 2) return null;
+      if (parts.length < 1) return null;
       return parts;
     }
 
     function isSeparatorCells(cells) {
       return cells.every((c) => {
         const x = c.trim();
-        return /^:?\s*-{3,}\s*:?$/.test(x);
+        // GFM uses 3+ hyphens; many models use "--" or "-" in short tables
+        return /^:?\s*-+\s*:?$/.test(x);
       });
     }
 
     function tryConsumeTable(startIdx) {
       const headerCells = splitTableRow(lines[startIdx]);
-      if (!headerCells) return null;
+      if (!headerCells || headerCells.length < 1) return null;
       const sepLine = lines[startIdx + 1];
       if (sepLine === undefined) return null;
       const sepCells = splitTableRow(sepLine);
@@ -82,7 +88,7 @@
         const raw = lines[j];
         if (raw.trim() === '') break;
         const rowCells = splitTableRow(raw);
-        if (!rowCells || rowCells.length < 2) break;
+        if (!rowCells || rowCells.length < 1) break;
         const normalized = [];
         for (let k = 0; k < headerCells.length; k++) {
           normalized.push(rowCells[k] !== undefined ? rowCells[k] : '');
@@ -90,7 +96,8 @@
         bodyRows.push(normalized);
       }
 
-      let html = '<table><thead><tr>';
+      let html =
+        '<div class="md-table-scroll"><table><thead><tr>';
       headerCells.forEach((c) => {
         html += `<th>${inlineFormat(c)}</th>`;
       });
@@ -102,7 +109,7 @@
         });
         html += '</tr>';
       });
-      html += '</tbody></table>';
+      html += '</tbody></table></div>';
       return { html, endIdx: j };
     }
 

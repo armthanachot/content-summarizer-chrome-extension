@@ -44,7 +44,7 @@ const PROVIDER_CONFIGS = {
       summarize: 'gemini-2.5-flash',
       translate: 'gemini-2.5-flash',
       explain: 'gemini-2.5-flash',
-      chat: 'gemini-2.5-flash',
+      chat: 'gemini-2.5-pro',
       advisors: 'gemini-2.5-flash',
       theme: 'gemini-3-flash-preview',
     },

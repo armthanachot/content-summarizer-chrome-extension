@@ -328,6 +328,21 @@
       margin: 0; padding: 0; box-sizing: border-box;
     }
 
+    .md-table-scroll {
+      overflow-x: auto;
+      max-width: 100%;
+      margin: 8px 0;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .md-table-scroll table {
+      display: table;
+      width: max-content;
+      min-width: 100%;
+      margin: 0;
+      border-collapse: collapse;
+    }
+
     .modal {
       position: fixed;
       background: #E8F5E9;
@@ -1686,10 +1701,11 @@
       color: #555;
     }
 
-    .response-content table {
-      border-collapse: collapse;
-      width: 100%;
+    .response-content .md-table-scroll {
       margin: 12px 0;
+    }
+
+    .response-content .md-table-scroll table {
       font-size: 13px;
       line-height: 1.45;
     }
@@ -1958,10 +1974,7 @@
       color: #1e3a8a;
     }
 
-    .word-explain-popover-body table {
-      border-collapse: collapse;
-      width: 100%;
-      margin: 8px 0;
+    .word-explain-popover-body .md-table-scroll table {
       font-size: 12px;
       line-height: 1.4;
     }
@@ -2401,10 +2414,7 @@
     .summary-chat-msg-assistant .summary-chat-md ol { margin: 6px 0; padding-left: 20px; }
     .summary-chat-msg-assistant .summary-chat-md a { color: #60a5fa; }
 
-    .summary-chat-msg-assistant .summary-chat-md table {
-      border-collapse: collapse;
-      width: 100%;
-      margin: 8px 0;
+    .summary-chat-msg-assistant .summary-chat-md .md-table-scroll table {
       font-size: 12px;
       line-height: 1.4;
     }
