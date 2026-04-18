@@ -1,0 +1,74 @@
+# How To Update Theme
+
+1. generate json of theme
+
+example
+
+```json
+{
+  "key": "midnight-toffee",
+  "label": "Midnight Toffee",
+  "summary": {
+    "modalBackground": "#FFF8E1",
+    "textColor": "#3E2723",
+    "headerStart": "#5D4037",
+    "headerEnd": "#3E2723",
+    "headerText": "#FFECB3",
+    "inputBackground": "#FFFFFF",
+    "inputBorder": "#D7CCC8",
+    "primaryStart": "#8D6E63",
+    "primaryEnd": "#5D4037",
+    "summaryPanelBackground": "#FFFFFF",
+    "summaryPanelBorder": "#EFEBE9",
+    "summaryTitleColor": "#4E342E",
+    "summaryMarkdownText": "#212121",
+    "summaryMarkdownAccent": "#795548"
+  },
+  "explain": {
+    "panelBackground": "#FFFFFF",
+    "borderColor": "#3E2723",
+    "headerStart": "#3E2723",
+    "headerEnd": "#1B0000",
+    "headerText": "#FFD54F",
+    "bodyText": "#3E2723",
+    "accentColor": "#FF8F00"
+  },
+  "chat": {
+    "panelBackground": "#1B1212",
+    "borderColor": "#3E2723",
+    "textColor": "#F5F5F5",
+    "headerStart": "#3E2723",
+    "headerEnd": "#1B0000",
+    "headerText": "#FFD54F",
+    "messageAssistantBackground": "#2D2222",
+    "messageUserStart": "#FF8F00",
+    "messageUserEnd": "#E65100",
+    "inputBackground": "#2D2222",
+    "chatInputText": "#FFF8E1",
+    "assistantMdHeading": "#FFD54F",
+    "assistantMdH1Underline": "#4E342E",
+    "assistantMdParagraph": "#D7CCC8",
+    "assistantMdStrong": "#FFFFFF",
+    "assistantMdCodeBg": "#1B1212",
+    "assistantMdCodeText": "#FFAB40",
+    "assistantMdCodeBorder": "#3E2723",
+    "assistantMdPreBg": "#000000",
+    "assistantMdPreText": "#FFD180",
+    "assistantMdPreBorder": "#FF8F00",
+    "assistantMdLink": "#FFB74D",
+    "assistantMdTableBorder": "#4E342E",
+    "assistantMdThBg": "#3E2723",
+    "assistantMdThText": "#FFD54F",
+    "assistantMdEvenRowBg": "#261C1C",
+    "sendButtonStart": "#FF8F00",
+    "sendButtonEnd": "#E65100"
+  },
+  "sourceFile": "midnight_toffee.json"
+}
+```
+
+2. upload file to S3
+
+3. update presets.json in S3 bucket
+
+4. re upload presets.json to S3 bucket
