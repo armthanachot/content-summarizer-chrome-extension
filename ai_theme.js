@@ -4,6 +4,8 @@
  * Gemini: generateContent with responseMimeType + responseJsonSchema.
  */
 (function aiThemeDesignerModule() {
+  const postOpenAI = callOpenAI;
+  const postGemini = callGemini;
   const SCHEMA_NAME = 'content_summarizer_theme';
 
   const SUMMARY_KEYS = [
@@ -209,72 +211,41 @@
     };
   }
 
-  async function fetchOpenAI(apiKey, model, currentTheme) {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        input: [
-          { role: 'system', content: buildSystemInstruction() },
-          { role: 'user', content: buildUserContent(currentTheme) },
-        ],
-        text: {
-          format: {
-            type: 'json_schema',
-            name: SCHEMA_NAME,
-            strict: true,
-            schema: getThemeJsonSchema(),
-          },
+  async function fetchOpenAI(apiKey, model, url, currentTheme) {
+    const body = {
+      model,
+      input: [
+        { role: 'system', content: buildSystemInstruction() },
+        { role: 'user', content: buildUserContent(currentTheme) },
+      ],
+      text: {
+        format: {
+          type: 'json_schema',
+          name: SCHEMA_NAME,
+          strict: true,
+          schema: getThemeJsonSchema(),
         },
-      }),
-    });
-
-    const raw = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(
-        raw.error?.message || `OpenAI Responses request failed with status ${response.status}`
-      );
-    }
+      },
+    };
+    const raw = await postOpenAI(apiKey, url, body);
     const parsed = parseOpenAIResponsesStructuredJson(raw);
     return normalizeThemePayload(parsed);
   }
 
-  async function fetchGemini(apiKey, model, currentTheme) {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'x-goog-api-key': apiKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: buildSystemInstruction() }],
-          },
-          contents: [
-            { role: 'user', parts: [{ text: buildUserContent(currentTheme) }] },
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 4096,
-            responseMimeType: 'application/json',
-            responseJsonSchema: getThemeJsonSchema(),
-          },
-        }),
-      }
-    );
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(
-        data.error?.message || `Gemini API request failed with status ${response.status}`
-      );
-    }
+  async function fetchGemini(apiKey, model, url, currentTheme) {
+    const body = {
+      system_instruction: {
+        parts: [{ text: buildSystemInstruction() }],
+      },
+      contents: [{ role: 'user', parts: [{ text: buildUserContent(currentTheme) }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 4096,
+        responseMimeType: 'application/json',
+        responseJsonSchema: getThemeJsonSchema(),
+      },
+    };
+    const data = await postGemini(apiKey, url, body);
     const jsonText = extractGeminiJsonText(data);
     let parsed;
     try {

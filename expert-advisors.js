@@ -5,6 +5,8 @@
  */
 
 (function expertAdvisorsModule() {
+  const postOpenAI = callOpenAI;
+  const postGemini = callGemini;
   const SCHEMA_NAME = 'expert_advisors';
 
   function getExpertAdvisorsJsonSchema() {
@@ -148,36 +150,23 @@
   /**
    * @returns {Promise<{ title: string, bio: string, instruction: string }[]>}
    */
-  async function fetchOpenAI(apiKey, model, summaryMarkdown) {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        input: [
-          { role: 'system', content: buildSystemInstruction() },
-          { role: 'user', content: buildUserContent(summaryMarkdown) },
-        ],
-        text: {
-          format: {
-            type: 'json_schema',
-            name: SCHEMA_NAME,
-            strict: true,
-            schema: getExpertAdvisorsJsonSchema(),
-          },
+  async function fetchOpenAI(apiKey, model, url, summaryMarkdown) {
+    const body = {
+      model,
+      input: [
+        { role: 'system', content: buildSystemInstruction() },
+        { role: 'user', content: buildUserContent(summaryMarkdown) },
+      ],
+      text: {
+        format: {
+          type: 'json_schema',
+          name: SCHEMA_NAME,
+          strict: true,
+          schema: getExpertAdvisorsJsonSchema(),
         },
-      }),
-    });
-
-    const raw = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(
-        raw.error?.message || `OpenAI Responses request failed with status ${response.status}`
-      );
-    }
+      },
+    };
+    const raw = await postOpenAI(apiKey, url, body);
     const parsed = parseOpenAIResponsesStructuredJson(raw);
     return normalizeExperts(parsed);
   }
@@ -185,45 +174,29 @@
   /**
    * @returns {Promise<{ title: string, bio: string, instruction: string }[]>}
    */
-  async function fetchGemini(apiKey, model, summaryMarkdown) {
+  async function fetchGemini(apiKey, model, url, summaryMarkdown) {
     const systemText = buildSystemInstruction();
     const userText = buildUserContent(summaryMarkdown);
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'x-goog-api-key': apiKey,
-          'Content-Type': 'application/json',
+    const body = {
+      contents: [
+        {
+          role: 'MODEL',
+          parts: [{ text: systemText }],
         },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'MODEL',
-              parts: [{ text: systemText }],
-            },
-            {
-              role: 'USER',
-              parts: [{ text: userText }],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.35,
-            maxOutputTokens: 2048,
-            responseMimeType: 'application/json',
-            responseJsonSchema: getExpertAdvisorsJsonSchema(),
-          },
-        }),
-      }
-    );
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(
-        data.error?.message || `Gemini API request failed with status ${response.status}`
-      );
-    }
+        {
+          role: 'USER',
+          parts: [{ text: userText }],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.35,
+        maxOutputTokens: 2048,
+        responseMimeType: 'application/json',
+        responseJsonSchema: getExpertAdvisorsJsonSchema(),
+      },
+    };
+    const data = await postGemini(apiKey, url, body);
     const jsonText = extractGeminiJsonText(data);
     let parsed;
     try {
