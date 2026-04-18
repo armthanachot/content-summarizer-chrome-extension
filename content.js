@@ -504,6 +504,24 @@
       margin-top: 4px;
     }
 
+    .theme-preset-toolbar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .theme-preset-toolbar .theme-preset-select {
+      min-width: 0;
+    }
+
+    .theme-refresh-presets-btn {
+      font-size: 16px;
+      line-height: 1;
+      padding: 6px 10px;
+      min-width: 36px;
+    }
+
     .theme-tools-secondary {
       display: flex;
       justify-content: space-between;
@@ -540,6 +558,11 @@
     .theme-toolbar-btn:hover {
       background: #F1F8E9;
       border-color: #81C784;
+    }
+
+    .theme-refresh-presets-btn.spinning {
+      animation: cs-spin 0.75s linear infinite;
+      pointer-events: none;
     }
 
     .theme-preview-btn {
@@ -1004,6 +1027,7 @@
     .summary-actions-menu-btn:disabled,
     .summary-action-item:disabled,
     .refresh-btn:disabled,
+    .theme-refresh-presets-btn:disabled,
     .assistant-chat-btn:disabled,
     .source-page-tab:disabled,
     .source-page-add-btn:disabled,
@@ -3415,13 +3439,18 @@
     ];
   }
 
-  async function loadThemePresetsFromFiles() {
+  async function loadThemePresetsFromFiles(bustCache) {
     if (!isContextValid()) return getBuiltinThemePresetFallback();
+
+    const remoteFetchOpts =
+      bustCache && typeof CS_THEME_REMOTE !== 'undefined'
+        ? { bustCache: true, cacheBustToken: Date.now() }
+        : undefined;
 
     let indexData = null;
     let useRemote = false;
     if (typeof CS_THEME_REMOTE !== 'undefined' && CS_THEME_REMOTE.fetchPresetsIndex) {
-      indexData = await CS_THEME_REMOTE.fetchPresetsIndex();
+      indexData = await CS_THEME_REMOTE.fetchPresetsIndex(remoteFetchOpts);
       useRemote = await CS_THEME_REMOTE.remoteCatalogAvailable(indexData);
     }
     if (!useRemote) {
@@ -3468,9 +3497,16 @@
           const url = bundledForest
             ? chrome.runtime.getURL(THEME_PRESETS_DIR + safeName)
             : isRemote
-              ? CS_THEME_REMOTE.themeFileUrl(safeName)
+              ? CS_THEME_REMOTE.themeFileUrl(safeName, remoteFetchOpts)
               : chrome.runtime.getURL(THEME_PRESETS_DIR + safeName);
-          const r = await fetch(url, isRemote && !bundledForest ? { credentials: 'omit' } : undefined);
+          const fetchOpts =
+            isRemote && !bundledForest
+              ? {
+                  credentials: 'omit',
+                  ...(remoteFetchOpts && remoteFetchOpts.bustCache ? { cache: 'no-store' } : {}),
+                }
+              : undefined;
+          const r = await fetch(url, fetchOpts);
           if (!r.ok) continue;
           const parsed = await r.json();
           const entry = presetEntryFromThemeJson(parsed, fallbackKey);
@@ -5611,7 +5647,10 @@
         <h3>Theme Setup</h3>
         <p>Customize colors for each section: Content Summarizer, Explain, and Chat. Changes are saved locally in your browser.</p>
         <div class="theme-toolbar">
-          <select class="theme-preset-select" aria-label="Theme preset"></select>
+          <div class="theme-preset-toolbar">
+            <select class="theme-preset-select" aria-label="Theme preset"></select>
+            <button type="button" class="theme-toolbar-btn theme-refresh-presets-btn" title="Reload theme list from server" aria-label="Reload theme list from server">↻</button>
+          </div>
           <button type="button" class="theme-toolbar-btn theme-reset-btn">Reset Default</button>
           <button type="button" class="theme-toolbar-btn theme-preview-btn">Theme Preview</button>
           <button type="button" class="theme-toolbar-btn theme-import-btn">Import JSON</button>
@@ -5700,6 +5739,7 @@
     }
 
     const presetSelect = view.querySelector('.theme-preset-select');
+    const refreshPresetsBtn = view.querySelector('.theme-refresh-presets-btn');
     const resetBtn = view.querySelector('.theme-reset-btn');
     const previewBtn = view.querySelector('.theme-preview-btn');
     const importBtn = view.querySelector('.theme-import-btn');
@@ -5785,6 +5825,7 @@
       if (!modal) return;
       modal.classList.toggle('theme-busy', !!locked);
       if (previewBtn) previewBtn.disabled = !!locked;
+      if (refreshPresetsBtn) refreshPresetsBtn.disabled = !!locked;
       if (aiDesignerBtn) {
         aiDesignerBtn.disabled = !!locked;
         aiDesignerBtn.classList.toggle('loading', !!locked);
@@ -5823,6 +5864,42 @@
       if (!presetSelect.value) return;
       applySelectedPresetToDraftAndPreview();
     });
+
+    if (refreshPresetsBtn) {
+      refreshPresetsBtn.addEventListener('click', async () => {
+        const prevKey = presetSelect.value;
+        presetSelect.disabled = true;
+        refreshPresetsBtn.disabled = true;
+        refreshPresetsBtn.classList.add('spinning');
+        setStatus('Reloading theme list from server…', false);
+        try {
+          const list = await loadThemePresetsFromFiles(true);
+          themePresetList = list;
+          presetSelect.innerHTML = list
+            .map(
+              (preset) =>
+                `<option value="${escapeHtml(preset.key)}">${escapeHtml(preset.label)}</option>`
+            )
+            .join('');
+          const nextKey =
+            prevKey && list.some((p) => p.key === prevKey)
+              ? prevKey
+              : presetKeyMatchingCurrentTheme() || (list[0] && list[0].key) || '';
+          presetSelect.value = nextKey || '';
+          if (!presetSelect.value && list.length) presetSelect.selectedIndex = 0;
+          if (prevKey && list.some((p) => p.key === prevKey)) {
+            applySelectedPresetToDraftAndPreview();
+          }
+          setStatus('Theme list updated.', false);
+        } catch {
+          setStatus('Could not reload theme list.', true);
+        } finally {
+          presetSelect.disabled = false;
+          refreshPresetsBtn.disabled = false;
+          refreshPresetsBtn.classList.remove('spinning');
+        }
+      });
+    }
 
     loadThemePresetsFromFiles()
       .then((list) => {

@@ -35,16 +35,33 @@
     return safeName;
   }
 
-  function themeFileUrl(safeName) {
-    return FILES_BASE + encodeURIComponent(safeName);
+  /**
+   * @param {string} safeName
+   * @param {{ bustCache?: boolean, cacheBustToken?: number }} [options]
+   */
+  function themeFileUrl(safeName, options) {
+    var u = FILES_BASE + encodeURIComponent(safeName);
+    if (options && options.bustCache) {
+      var tok = options.cacheBustToken != null ? options.cacheBustToken : Date.now();
+      u += (u.indexOf('?') >= 0 ? '&' : '?') + '_cs=' + tok;
+    }
+    return u;
   }
 
   /**
+   * @param {{ bustCache?: boolean, cacheBustToken?: number }} [options]
    * @returns {Promise<object|null>} Parsed presets.json or null on failure
    */
-  async function fetchPresetsIndex() {
+  async function fetchPresetsIndex(options) {
     try {
-      var res = await fetch(PRESETS_URL, { credentials: 'omit' });
+      var url = PRESETS_URL;
+      if (options && options.bustCache) {
+        var t = options.cacheBustToken != null ? options.cacheBustToken : Date.now();
+        url += (url.indexOf('?') >= 0 ? '&' : '?') + '_cs=' + t;
+      }
+      var fetchOpts = { credentials: 'omit' };
+      if (options && options.bustCache) fetchOpts.cache = 'no-store';
+      var res = await fetch(url, fetchOpts);
       if (!res.ok) return null;
       var data = await res.json();
       return data && typeof data === 'object' ? data : null;
