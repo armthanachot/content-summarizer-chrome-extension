@@ -3239,6 +3239,162 @@
         var(--cs-chat-send-end, #1D4ED8) 100%
       ) !important;
     }
+
+    /* --- Content Summarizer: theme-aware controls (override base hardcoded greens) --- */
+    .option-row label {
+      color: var(--cs-summary-panel-title, #2E7D32) !important;
+    }
+
+    .option-row input[type="number"]:focus {
+      border-color: var(--cs-summary-primary-end, #43A047) !important;
+    }
+
+    .input-toggle {
+      background: color-mix(
+        in srgb,
+        var(--cs-summary-input-border, #A5D6A7) 55%,
+        var(--cs-summary-panel-bg, #FAFFF5) 45%
+      ) !important;
+    }
+
+    .toggle-option {
+      color: var(--cs-summary-markdown-accent, #2E7D32) !important;
+    }
+
+    .toggle-option.active {
+      background: var(--cs-summary-modal-bg, #E8F5E9) !important;
+      color: var(--cs-summary-text-color, #2E3A2E) !important;
+    }
+
+    .url-paste-btn {
+      border-color: var(--cs-summary-input-border, #A5D6A7) !important;
+      background: var(--cs-summary-input-bg, #FAFFF5) !important;
+      color: var(--cs-summary-markdown-accent, #2E7D32) !important;
+    }
+
+    .url-paste-btn:hover:not(:disabled) {
+      border-color: var(--cs-summary-primary-start, #66BB6A) !important;
+      background: var(--cs-summary-panel-bg, #FAFFF5) !important;
+    }
+
+    .url-display {
+      background: color-mix(
+        in srgb,
+        var(--cs-summary-panel-bg, #FAFFF5) 82%,
+        var(--cs-summary-primary-start, #66BB6A) 18%
+      ) !important;
+      border-color: var(--cs-summary-panel-border, #C8E6C9) !important;
+    }
+
+    .url-display-text {
+      color: var(--cs-summary-markdown-accent, #2E7D32) !important;
+    }
+
+    .url-open-btn {
+      background: linear-gradient(
+        135deg,
+        var(--cs-summary-primary-start, #66BB6A),
+        var(--cs-summary-primary-end, #43A047)
+      ) !important;
+      color: #fff !important;
+    }
+
+    .divider {
+      background: var(--cs-summary-panel-border, #C8E6C9) !important;
+    }
+
+    .divider:hover,
+    .divider.active {
+      background: color-mix(
+        in srgb,
+        var(--cs-summary-markdown-accent, #2E7D32) 35%,
+        var(--cs-summary-panel-border, #C8E6C9) 65%
+      ) !important;
+    }
+
+    .divider::after {
+      background: linear-gradient(
+        180deg,
+        var(--cs-summary-primary-start, #66BB6A),
+        var(--cs-summary-primary-end, #43A047)
+      ) !important;
+    }
+
+    .refresh-btn,
+    .summary-actions-menu-btn {
+      background: var(--cs-summary-modal-bg, #E8F5E9) !important;
+      border-color: var(--cs-summary-panel-border, #C8E6C9) !important;
+      color: var(--cs-summary-markdown-accent, #2E7D32) !important;
+    }
+
+    .refresh-btn:hover:not(:disabled),
+    .summary-actions-menu-btn:hover:not(:disabled) {
+      background: color-mix(
+        in srgb,
+        var(--cs-summary-panel-bg, #FAFFF5) 65%,
+        var(--cs-summary-primary-start, #66BB6A) 35%
+      ) !important;
+      border-color: var(--cs-summary-input-border, #A5D6A7) !important;
+    }
+
+    .btn-clear {
+      background: var(--cs-summary-modal-bg, #E8F5E9) !important;
+      color: var(--cs-summary-markdown-accent, #2E7D32) !important;
+      border-color: var(--cs-summary-panel-border, #C8E6C9) !important;
+    }
+
+    .btn-clear:hover:not(:disabled) {
+      background: color-mix(
+        in srgb,
+        var(--cs-summary-panel-bg, #FAFFF5) 65%,
+        var(--cs-summary-primary-start, #66BB6A) 35%
+      ) !important;
+      border-color: var(--cs-summary-input-border, #A5D6A7) !important;
+    }
+
+    .lang-select-btn {
+      background: var(--cs-summary-input-bg, #FAFFF5) !important;
+      border-color: var(--cs-summary-input-border, #A5D6A7) !important;
+      color: var(--cs-summary-text-color, #2E3A2E) !important;
+    }
+
+    .lang-select-btn:hover:not(:disabled) {
+      border-color: var(--cs-summary-primary-start, #66BB6A) !important;
+      background: var(--cs-summary-panel-bg, #FAFFF5) !important;
+    }
+
+    .lang-select-dropdown {
+      border-color: var(--cs-summary-panel-border, #C8E6C9) !important;
+    }
+
+    .response-panel {
+      border-color: var(--cs-summary-panel-border, #C8E6C9) !important;
+    }
+
+    .response-content::-webkit-scrollbar-thumb {
+      background: var(--cs-summary-panel-border, #C8E6C9) !important;
+    }
+
+    .response-content::-webkit-scrollbar-thumb:hover {
+      background: color-mix(
+        in srgb,
+        var(--cs-summary-markdown-accent, #2E7D32) 40%,
+        var(--cs-summary-panel-border, #C8E6C9) 60%
+      ) !important;
+    }
+
+    .response-content h1 {
+      border-bottom-color: var(--cs-summary-panel-border, #C8E6C9) !important;
+    }
+
+    .modal.theme-busy::after {
+      border-top-color: var(--cs-summary-markdown-accent, #2E7D32) !important;
+    }
+
+    .content-input:focus,
+    .url-input:focus {
+      border-color: var(--cs-summary-primary-end, #43A047) !important;
+    }
   `;
 
   // ===================== State =====================
@@ -3316,6 +3472,8 @@
   /** True when chat was opened from context menu "Fast Chat" without the main modal. */
   let fastChatStandaloneMode = false;
   let themePreviewModal = null;
+  /** Snapshot of `themeConfig` when Theme Setup opens; restored on Cancel if preset/AI changed preview without save. */
+  let themeEditorSnapshot = null;
   let lastContextMenuPos = { x: 100, y: 100 };
   const INIT_W = 560;
   const INIT_H = 540;
@@ -5429,8 +5587,7 @@
         <h3>Theme Setup</h3>
         <p>Customize colors for each section: Content Summarizer, Explain, and Chat. Changes are saved locally in your browser.</p>
         <div class="theme-toolbar">
-          <select class="theme-preset-select"></select>
-          <button type="button" class="theme-toolbar-btn theme-apply-preset-btn">Apply Preset</button>
+          <select class="theme-preset-select" aria-label="Theme preset"></select>
           <button type="button" class="theme-toolbar-btn theme-reset-btn">Reset Default</button>
           <button type="button" class="theme-toolbar-btn theme-preview-btn">Theme Preview</button>
           <button type="button" class="theme-toolbar-btn theme-import-btn">Import JSON</button>
@@ -5452,6 +5609,7 @@
     modalBody.appendChild(view);
 
     const draftTheme = sanitizeThemeConfig(themeConfig);
+    themeEditorSnapshot = cloneJsonSafe(themeConfig, DEFAULT_THEME_CONFIG);
     const inputRefs = {};
     const statusEl = view.querySelector('.theme-status');
 
@@ -5518,7 +5676,6 @@
     }
 
     const presetSelect = view.querySelector('.theme-preset-select');
-    const applyPresetBtn = view.querySelector('.theme-apply-preset-btn');
     const resetBtn = view.querySelector('.theme-reset-btn');
     const previewBtn = view.querySelector('.theme-preview-btn');
     const importBtn = view.querySelector('.theme-import-btn');
@@ -5614,7 +5771,17 @@
       return `<option value="${preset.key}">${preset.label}</option>`;
     }).join('');
 
-    applyPresetBtn.addEventListener('click', () => {
+    function presetKeyMatchingCurrentTheme() {
+      const target = JSON.stringify(sanitizeThemeConfig(themeConfig));
+      const found = THEME_PRESETS.find(
+        (item) => JSON.stringify(sanitizeThemeConfig(item.config)) === target
+      );
+      return found ? found.key : '';
+    }
+
+    presetSelect.value = presetKeyMatchingCurrentTheme() || (THEME_PRESETS[0] && THEME_PRESETS[0].key) || '';
+
+    function applySelectedPresetToDraftAndPreview() {
       const preset = THEME_PRESETS.find((item) => item.key === presetSelect.value);
       if (!preset) return;
       const applied = sanitizeThemeConfig(preset.config);
@@ -5624,7 +5791,13 @@
         });
       });
       syncInputsFromDraft();
-      setStatus(`Applied preset: ${preset.label}`, false);
+      themeConfig = sanitizeThemeConfig(draftTheme);
+      applyThemeConfigToUi();
+      setStatus(`Preview: ${preset.label} (use Save Theme to keep)`, false);
+    }
+
+    presetSelect.addEventListener('change', () => {
+      applySelectedPresetToDraftAndPreview();
     });
 
     resetBtn.addEventListener('click', () => {
@@ -5737,19 +5910,14 @@
 
           themeConfig = sanitizeThemeConfig(draftTheme);
           applyThemeConfigToUi();
-          try {
-            chrome.storage.local.set({
-              [STORAGE_KEYS.theme]: themeConfig,
-            });
-          } catch {}
 
           lastGeneratedThemeName =
             generated && typeof generated.themeName === 'string' ? generated.themeName.trim() : '';
           if (aiNameEl) aiNameEl.textContent = lastGeneratedThemeName;
           setStatus(
             lastGeneratedThemeName
-              ? `AI generated and applied: ${lastGeneratedThemeName}`
-              : 'AI generated and applied a new theme.',
+              ? `Preview: ${lastGeneratedThemeName} (use Save Theme to keep)`
+              : 'Preview: new AI theme (use Save Theme to keep)',
             false
           );
         } catch (err) {
@@ -5774,6 +5942,7 @@
     saveBtn.addEventListener('click', () => {
       themeConfig = sanitizeThemeConfig(draftTheme);
       applyThemeConfigToUi();
+      themeEditorSnapshot = null;
       try {
         chrome.storage.local.set({
           [STORAGE_KEYS.theme]: themeConfig,
@@ -5783,6 +5952,11 @@
     });
 
     cancelBtn.addEventListener('click', () => {
+      if (themeEditorSnapshot) {
+        themeConfig = sanitizeThemeConfig(themeEditorSnapshot);
+        themeEditorSnapshot = null;
+        applyThemeConfigToUi();
+      }
       showMainView();
     });
   }
