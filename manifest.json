@@ -3,7 +3,7 @@
   "name": "Content Summarizer",
   "version": "1.4.0",
   "description": "Summarize any content using OpenAI GPT-4o mini with beautiful markdown rendering",
-  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus", "downloads"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_title": "Content Summarizer",

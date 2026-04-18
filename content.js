@@ -13,6 +13,8 @@
       openai: 'CONTENT_SUMMARIZER_OPENAI_TOKEN',
       gemini: 'CONTENT_SUMMARIZER_GEMINI_TOKEN',
     },
+    /** AI-generated presets merged at runtime (same shape as theme/*.json files). */
+    customThemePresets: 'CONTENT_SUMMARIZER_CUSTOM_THEME_PRESETS',
   };
   const INJECTED_ID = 'cs-ext-injected';
   const POPOVER_ID = 'cs-ext-popover';
@@ -3450,7 +3452,35 @@
         /* skip broken preset file */
       }
     }
-    return presets.length ? presets : getBuiltinThemePresetFallback();
+
+    const bundled = presets.length ? presets : getBuiltinThemePresetFallback();
+    let customRows = [];
+    try {
+      const st = await chrome.storage.local.get([STORAGE_KEYS.customThemePresets]);
+      const raw = st[STORAGE_KEYS.customThemePresets];
+      if (Array.isArray(raw)) customRows = raw;
+    } catch {
+      /* ignore */
+    }
+
+    const byKey = new Map(bundled.map((p) => [p.key, p]));
+    customRows.forEach((c) => {
+      const entry = presetEntryFromThemeJson(c, typeof c.key === 'string' ? c.key : '');
+      if (entry) byKey.set(entry.key, entry);
+    });
+    const order = bundled.map((b) => b.key);
+    const merged = [];
+    const used = new Set();
+    order.forEach((k) => {
+      if (byKey.has(k)) {
+        merged.push(byKey.get(k));
+        used.add(k);
+      }
+    });
+    byKey.forEach((v, k) => {
+      if (!used.has(k)) merged.push(v);
+    });
+    return merged.length ? merged : getBuiltinThemePresetFallback();
   }
 
   function applyThemeConfigToUi() {
@@ -5879,12 +5909,41 @@
           lastGeneratedThemeName =
             generated && typeof generated.themeName === 'string' ? generated.themeName.trim() : '';
           if (aiNameEl) aiNameEl.textContent = lastGeneratedThemeName;
+          const pr = generated && generated.persistResult;
+          let persistNote = '';
+          if (pr && !pr.error) {
+            persistNote =
+              ' Saved to browser theme library. Check Downloads for content-summarizer-theme-export/ (JSON + presets.json) to copy into the extension theme/ folder.';
+          } else if (pr && pr.error) {
+            persistNote = ` (Could not save/export theme files: ${pr.error})`;
+          }
           setStatus(
             lastGeneratedThemeName
-              ? `Preview: ${lastGeneratedThemeName} (use Save Theme to keep)`
-              : 'Preview: new AI theme (use Save Theme to keep)',
-            false
+              ? `Preview: ${lastGeneratedThemeName} (use Save Theme to keep).${persistNote}`
+              : `Preview: new AI theme (use Save Theme to keep).${persistNote}`,
+            !!(pr && pr.error)
           );
+
+          const newPresetKey = pr && typeof pr.key === 'string' ? pr.key : '';
+          loadThemePresetsFromFiles()
+            .then((list) => {
+              themePresetList = list;
+              if (!presetSelect) return;
+              presetSelect.disabled = false;
+              presetSelect.innerHTML = list
+                .map(
+                  (p) =>
+                    `<option value="${escapeHtml(p.key)}">${escapeHtml(p.label)}</option>`
+                )
+                .join('');
+              if (newPresetKey && list.some((p) => p.key === newPresetKey)) {
+                presetSelect.value = newPresetKey;
+              } else {
+                const match = presetKeyMatchingCurrentTheme();
+                presetSelect.value = match || (list[0] && list[0].key) || '';
+              }
+            })
+            .catch(() => {});
         } catch (err) {
           setStatus(`AI designer failed: ${err && err.message ? err.message : 'Unknown error'}`, true);
         } finally {

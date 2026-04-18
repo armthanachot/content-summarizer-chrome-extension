@@ -122,6 +122,7 @@
       '- Keep text/background contrast readable.',
       '- Keep the three sections stylistically consistent as one theme family.',
       '- Theme name should be short and creative.',
+      '- Your themeName and overall palette must be clearly distinct from any existing presets supplied in a separate user message (JSON object).',
     ].join('\n');
   }
 
@@ -133,6 +134,22 @@
       serialized,
       '---',
       'Generate one fresh theme with all required properties.',
+    ].join('\n');
+  }
+
+  function buildExistingPresetsUserContent(presetDescriptor) {
+    const safe = presetDescriptor && typeof presetDescriptor === 'object' ? presetDescriptor : {};
+    const entries = Array.isArray(safe.entries) ? safe.entries : [];
+    const labels = Array.isArray(safe.labels) ? safe.labels : [];
+    const payload = {
+      existing_theme_presets: entries,
+      existing_theme_labels: labels,
+    };
+    return [
+      'Constraint JSON — existing bundled and saved-in-browser themes (do not duplicate these names or mimic these palettes):',
+      JSON.stringify(payload),
+      '',
+      'You must invent a new themeName and colors that are clearly different from every entry in existing_theme_presets / existing_theme_labels.',
     ].join('\n');
   }
 
@@ -211,12 +228,17 @@
     };
   }
 
-  async function fetchOpenAI(apiKey, model, url, currentTheme) {
+  async function fetchOpenAI(apiKey, model, url, currentTheme, presetDescriptor) {
+    const presetMeta =
+      presetDescriptor && typeof presetDescriptor === 'object'
+        ? presetDescriptor
+        : { entries: [], labels: [] };
     const body = {
       model,
       input: [
         { role: 'system', content: buildSystemInstruction() },
         { role: 'user', content: buildUserContent(currentTheme) },
+        { role: 'user', content: buildExistingPresetsUserContent(presetMeta) },
       ],
       text: {
         format: {
@@ -232,12 +254,24 @@
     return normalizeThemePayload(parsed);
   }
 
-  async function fetchGemini(apiKey, model, url, currentTheme) {
+  async function fetchGemini(apiKey, model, url, currentTheme, presetDescriptor) {
+    const presetMeta =
+      presetDescriptor && typeof presetDescriptor === 'object'
+        ? presetDescriptor
+        : { entries: [], labels: [] };
     const body = {
       system_instruction: {
         parts: [{ text: buildSystemInstruction() }],
       },
-      contents: [{ role: 'user', parts: [{ text: buildUserContent(currentTheme) }] }],
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: buildUserContent(currentTheme) },
+            { text: buildExistingPresetsUserContent(presetMeta) },
+          ],
+        },
+      ],
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 4096,
