@@ -4,7 +4,10 @@
   "version": "1.4.0",
   "description": "Summarize any content using OpenAI GPT-4o mini with beautiful markdown rendering",
   "permissions": ["storage", "activeTab", "scripting", "contextMenus", "downloads"],
-  "host_permissions": ["<all_urls>"],
+  "host_permissions": [
+    "<all_urls>",
+    "https://alztwhogvtlrzqbngocs.supabase.co/*"
+  ],
   "action": {
     "default_title": "Content Summarizer",
     "default_icon": {
@@ -24,7 +27,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["md.js", "file.js", "theme_preview.js", "content.js"],
+      "js": ["md.js", "file.js", "theme_preview.js", "theme_remote.js", "content.js"],
       "run_at": "document_idle"
     }
   ],

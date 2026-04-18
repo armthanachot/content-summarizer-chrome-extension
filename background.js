@@ -6,6 +6,7 @@ importScripts(
   'ai_client.js',
   'expert-advisors.js',
   'ai_theme.js',
+  'theme_remote.js',
   'theme_preset_metadata.js',
   'theme_generator.js',
   'summarize.js',

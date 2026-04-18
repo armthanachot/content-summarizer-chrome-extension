@@ -43,10 +43,16 @@ async function persistAiGeneratedThemeAssets(normalized) {
 
   let mergedPresetsBody = '';
   try {
-    const res = await fetch(chrome.runtime.getURL(THEME_PRESET_INDEX_PATH));
-    if (res.ok) {
-      const idxData = await res.json();
-      const files = Array.isArray(idxData.files) ? [...idxData.files] : [];
+    let idxData = null;
+    if (typeof CS_THEME_REMOTE !== 'undefined' && CS_THEME_REMOTE.fetchPresetsIndex) {
+      idxData = await CS_THEME_REMOTE.fetchPresetsIndex();
+    }
+    if (!idxData || !Array.isArray(idxData.files)) {
+      const res = await fetch(chrome.runtime.getURL(THEME_PRESET_INDEX_PATH));
+      if (res.ok) idxData = await res.json();
+    }
+    if (idxData && Array.isArray(idxData.files)) {
+      const files = [...idxData.files];
       if (!files.includes(sourceFile)) files.push(sourceFile);
       mergedPresetsBody = JSON.stringify({ files }, null, 2);
     }

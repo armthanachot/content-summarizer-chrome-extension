@@ -3417,15 +3417,24 @@
 
   async function loadThemePresetsFromFiles() {
     if (!isContextValid()) return getBuiltinThemePresetFallback();
-    const indexUrl = chrome.runtime.getURL(THEME_PRESETS_INDEX_PATH);
-    let indexData;
-    try {
-      const res = await fetch(indexUrl);
-      if (!res.ok) throw new Error(String(res.status));
-      indexData = await res.json();
-    } catch {
-      return getBuiltinThemePresetFallback();
+
+    let indexData = null;
+    let useRemote = false;
+    if (typeof CS_THEME_REMOTE !== 'undefined' && CS_THEME_REMOTE.fetchPresetsIndex) {
+      indexData = await CS_THEME_REMOTE.fetchPresetsIndex();
+      useRemote = await CS_THEME_REMOTE.remoteCatalogAvailable(indexData);
     }
+    if (!useRemote) {
+      const indexUrl = chrome.runtime.getURL(THEME_PRESETS_INDEX_PATH);
+      try {
+        const res = await fetch(indexUrl);
+        if (!res.ok) throw new Error(String(res.status));
+        indexData = await res.json();
+      } catch {
+        return getBuiltinThemePresetFallback();
+      }
+    }
+
     const files = Array.isArray(indexData?.files)
       ? indexData.files
       : Array.isArray(indexData?.presets)
@@ -3433,24 +3442,71 @@
         : [];
     if (!files.length) return getBuiltinThemePresetFallback();
 
-    const presets = [];
-    for (const file of files) {
-      const name = typeof file === 'string' ? file.trim() : '';
-      if (!name || !name.toLowerCase().endsWith('.json')) continue;
-      if (name.toLowerCase() === 'presets.json') continue;
-      const safeName = name.replace(/^\/+/, '').replace(/\\+/g, '/');
-      if (safeName.includes('..')) continue;
-      const fallbackKey = safeName.replace(/\.json$/i, '').replace(/_/g, '-');
-      try {
-        const url = chrome.runtime.getURL(THEME_PRESETS_DIR + safeName);
-        const r = await fetch(url);
-        if (!r.ok) continue;
-        const parsed = await r.json();
-        const entry = presetEntryFromThemeJson(parsed, fallbackKey);
-        if (entry) presets.push(entry);
-      } catch {
-        /* skip broken preset file */
+    const safeFile =
+      typeof CS_THEME_REMOTE !== 'undefined' && CS_THEME_REMOTE.safeThemeFileName
+        ? (f) => CS_THEME_REMOTE.safeThemeFileName(f)
+        : (f) => {
+            const name = typeof f === 'string' ? f.trim() : '';
+            if (!name || !name.toLowerCase().endsWith('.json')) return '';
+            if (name.toLowerCase() === 'presets.json') return '';
+            const sn = name.replace(/^\/+/, '').replace(/\\+/g, '/');
+            return sn.includes('..') ? '' : sn;
+          };
+
+    async function loadPresetRowsFromFiles(filesList, isRemote) {
+      const out = [];
+      for (const file of filesList) {
+        const safeName = safeFile(file);
+        if (!safeName) continue;
+        const fallbackKey = safeName.replace(/\.json$/i, '').replace(/_/g, '-');
+        try {
+          const bundledForest =
+            isRemote &&
+            typeof CS_THEME_REMOTE !== 'undefined' &&
+            typeof CS_THEME_REMOTE.isForestDefaultThemeFile === 'function' &&
+            CS_THEME_REMOTE.isForestDefaultThemeFile(safeName);
+          const url = bundledForest
+            ? chrome.runtime.getURL(THEME_PRESETS_DIR + safeName)
+            : isRemote
+              ? CS_THEME_REMOTE.themeFileUrl(safeName)
+              : chrome.runtime.getURL(THEME_PRESETS_DIR + safeName);
+          const r = await fetch(url, isRemote && !bundledForest ? { credentials: 'omit' } : undefined);
+          if (!r.ok) continue;
+          const parsed = await r.json();
+          const entry = presetEntryFromThemeJson(parsed, fallbackKey);
+          if (entry) out.push(entry);
+        } catch {
+          /* skip broken preset file */
+        }
       }
+      return out;
+    }
+
+    let presets = await loadPresetRowsFromFiles(files, useRemote);
+    if (!presets.length && useRemote) {
+      try {
+        const res = await fetch(chrome.runtime.getURL(THEME_PRESETS_INDEX_PATH));
+        if (res.ok) {
+          const localIdx = await res.json();
+          const localFiles = Array.isArray(localIdx?.files)
+            ? localIdx.files
+            : Array.isArray(localIdx?.presets)
+              ? localIdx.presets
+              : [];
+          if (localFiles.length) presets = await loadPresetRowsFromFiles(localFiles, false);
+        }
+      } catch {
+        /* keep empty presets */
+      }
+    }
+
+    if (
+      useRemote &&
+      presets.length &&
+      !presets.some((p) => p.key === 'forest-default')
+    ) {
+      const forestRows = await loadPresetRowsFromFiles(['forest_default.json'], false);
+      if (forestRows.length) presets = [...forestRows, ...presets];
     }
 
     const bundled = presets.length ? presets : getBuiltinThemePresetFallback();
@@ -5792,7 +5848,7 @@
           )
           .join('');
         presetSelect.value = themePresetList[0] ? themePresetList[0].key : '';
-        setStatus('Could not load theme presets from theme/; using built-in default.', true);
+        setStatus('Could not load theme presets (remote or bundled); using built-in default.', true);
       });
 
     resetBtn.addEventListener('click', () => {
