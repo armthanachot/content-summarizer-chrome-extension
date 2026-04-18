@@ -41,7 +41,9 @@
         "icons/icons8-menu-vertical-100.png",
         "icons/icons8-plus-50.png",
         "icons/icons8-theme-48.png",
-        "icons/icons8-designer-64.png"
+        "icons/icons8-designer-64.png",
+        "theme/presets.json",
+        "theme/*.json"
       ],
       "matches": ["<all_urls>"]
     }

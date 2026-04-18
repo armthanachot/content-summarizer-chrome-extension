@@ -153,135 +153,6 @@
       ],
     },
   ];
-  const THEME_PRESETS = [
-    {
-      key: 'forest-default',
-      label: 'Forest Default',
-      config: DEFAULT_THEME_CONFIG,
-    },
-    {
-      key: 'sunset-punch',
-      label: 'Sunset Punch',
-      config: {
-        summary: {
-          modalBackground: '#FFF4EC',
-          textColor: '#4A2B1A',
-          headerStart: '#FF8A65',
-          headerEnd: '#F4511E',
-          headerText: '#FFFFFF',
-          inputBackground: '#FFF8F2',
-          inputBorder: '#FFCCBC',
-          primaryStart: '#FF7043',
-          primaryEnd: '#E64A19',
-          summaryPanelBackground: '#FFF8F2',
-          summaryPanelBorder: '#FFCCBC',
-          summaryTitleColor: '#D84315',
-          summaryMarkdownText: '#4A2B1A',
-          summaryMarkdownAccent: '#D84315',
-        },
-        explain: {
-          panelBackground: '#FFF7F5',
-          borderColor: '#C62828',
-          headerStart: '#D84315',
-          headerEnd: '#BF360C',
-          headerText: '#FFFFFF',
-          bodyText: '#4E342E',
-          accentColor: '#D84315',
-        },
-        chat: {
-          panelBackground: '#2B1D1A',
-          borderColor: '#BF360C',
-          textColor: '#FFE9DE',
-          headerStart: '#D84315',
-          headerEnd: '#8D2E10',
-          headerText: '#FFF3EE',
-          messageAssistantBackground: '#3A2A26',
-          messageUserStart: '#FF7043',
-          messageUserEnd: '#D84315',
-          inputBackground: '#3C2B27',
-          chatInputText: '#FFF3EE',
-          assistantMdHeading: '#FFB089',
-          assistantMdH1Underline: '#7A4A3A',
-          assistantMdParagraph: '#FFD9CA',
-          assistantMdStrong: '#FFF3EE',
-          assistantMdCodeBg: '#2B1D1A',
-          assistantMdCodeText: '#FFB38A',
-          assistantMdCodeBorder: '#7A4A3A',
-          assistantMdPreBg: '#1F1411',
-          assistantMdPreText: '#FFD5C2',
-          assistantMdPreBorder: '#BF360C',
-          assistantMdLink: '#FF9A70',
-          assistantMdTableBorder: '#8C5A4A',
-          assistantMdThBg: '#5A3A30',
-          assistantMdThText: '#FFF3EE',
-          assistantMdEvenRowBg: '#2F211D',
-          sendButtonStart: '#FF7043',
-          sendButtonEnd: '#E64A19',
-        },
-      },
-    },
-    {
-      key: 'ocean-breeze',
-      label: 'Ocean Breeze',
-      config: {
-        summary: {
-          modalBackground: '#EAF7FF',
-          textColor: '#12364D',
-          headerStart: '#4FC3F7',
-          headerEnd: '#0288D1',
-          headerText: '#FFFFFF',
-          inputBackground: '#F5FCFF',
-          inputBorder: '#B3E5FC',
-          primaryStart: '#29B6F6',
-          primaryEnd: '#0277BD',
-          summaryPanelBackground: '#F5FCFF',
-          summaryPanelBorder: '#B3E5FC',
-          summaryTitleColor: '#0277BD',
-          summaryMarkdownText: '#12364D',
-          summaryMarkdownAccent: '#0288D1',
-        },
-        explain: {
-          panelBackground: '#F4FBFF',
-          borderColor: '#1565C0',
-          headerStart: '#1976D2',
-          headerEnd: '#0D47A1',
-          headerText: '#FFFFFF',
-          bodyText: '#0E3A57',
-          accentColor: '#0288D1',
-        },
-        chat: {
-          panelBackground: '#0E2433',
-          borderColor: '#1565C0',
-          textColor: '#D9F1FF',
-          headerStart: '#1565C0',
-          headerEnd: '#0D47A1',
-          headerText: '#EAF7FF',
-          messageAssistantBackground: '#15354A',
-          messageUserStart: '#29B6F6',
-          messageUserEnd: '#0288D1',
-          inputBackground: '#1A3A4F',
-          chatInputText: '#EAF7FF',
-          assistantMdHeading: '#8FD9FF',
-          assistantMdH1Underline: '#2B4F66',
-          assistantMdParagraph: '#C9EBFF',
-          assistantMdStrong: '#EAF7FF',
-          assistantMdCodeBg: '#0E2433',
-          assistantMdCodeText: '#7DDBFF',
-          assistantMdCodeBorder: '#2B4F66',
-          assistantMdPreBg: '#081A27',
-          assistantMdPreText: '#A8E7FF',
-          assistantMdPreBorder: '#1565C0',
-          assistantMdLink: '#64C7FF',
-          assistantMdTableBorder: '#3A6785',
-          assistantMdThBg: '#2B4F66',
-          assistantMdThText: '#D9F1FF',
-          assistantMdEvenRowBg: '#0F2B3D',
-          sendButtonStart: '#29B6F6',
-          sendButtonEnd: '#0277BD',
-        },
-      },
-    },
-  ];
 
   function isContextValid() {
     try {
@@ -3515,6 +3386,73 @@
     return safe;
   }
 
+  const THEME_PRESETS_INDEX_PATH = 'theme/presets.json';
+  const THEME_PRESETS_DIR = 'theme/';
+
+  function presetEntryFromThemeJson(parsed, fallbackKey) {
+    if (!parsed || typeof parsed !== 'object') return null;
+    const key =
+      typeof parsed.key === 'string' && parsed.key.trim() ? parsed.key.trim() : fallbackKey;
+    const label =
+      typeof parsed.label === 'string' && parsed.label.trim() ? parsed.label.trim() : key;
+    const config = sanitizeThemeConfig({
+      summary: parsed.summary,
+      explain: parsed.explain,
+      chat: parsed.chat,
+    });
+    return { key, label, config };
+  }
+
+  function getBuiltinThemePresetFallback() {
+    return [
+      {
+        key: 'forest-default',
+        label: 'Forest Default',
+        config: sanitizeThemeConfig(DEFAULT_THEME_CONFIG),
+      },
+    ];
+  }
+
+  async function loadThemePresetsFromFiles() {
+    if (!isContextValid()) return getBuiltinThemePresetFallback();
+    const indexUrl = chrome.runtime.getURL(THEME_PRESETS_INDEX_PATH);
+    let indexData;
+    try {
+      const res = await fetch(indexUrl);
+      if (!res.ok) throw new Error(String(res.status));
+      indexData = await res.json();
+    } catch {
+      return getBuiltinThemePresetFallback();
+    }
+    const files = Array.isArray(indexData?.files)
+      ? indexData.files
+      : Array.isArray(indexData?.presets)
+        ? indexData.presets
+        : [];
+    if (!files.length) return getBuiltinThemePresetFallback();
+
+    const presets = [];
+    for (const file of files) {
+      const name = typeof file === 'string' ? file.trim() : '';
+      if (!name || !name.toLowerCase().endsWith('.json')) continue;
+      if (name.toLowerCase() === 'presets.json') continue;
+      const safeName = name.replace(/^\/+/, '').replace(/\\+/g, '/');
+      if (safeName.includes('..')) continue;
+      const fallbackKey = safeName.replace(/\.json$/i, '').replace(/_/g, '-');
+      try {
+        const url = chrome.runtime.getURL(THEME_PRESETS_DIR + safeName);
+        const r = await fetch(url);
+        if (!r.ok) continue;
+        const parsed = await r.json();
+        const entry = presetEntryFromThemeJson(parsed, fallbackKey);
+        if (entry) presets.push(entry);
+      } catch {
+        /* skip broken preset file */
+      }
+    }
+    return presets.length ? presets : getBuiltinThemePresetFallback();
+  }
+
   function applyThemeConfigToUi() {
     if (!modalRoot) return;
     const summary = themeConfig.summary;
@@ -5767,22 +5705,21 @@
       }
     }
 
-    presetSelect.innerHTML = THEME_PRESETS.map((preset) => {
-      return `<option value="${preset.key}">${preset.label}</option>`;
-    }).join('');
+    let themePresetList = [];
+
+    presetSelect.innerHTML = '<option value="">Loading presets…</option>';
+    presetSelect.disabled = true;
 
     function presetKeyMatchingCurrentTheme() {
       const target = JSON.stringify(sanitizeThemeConfig(themeConfig));
-      const found = THEME_PRESETS.find(
+      const found = themePresetList.find(
         (item) => JSON.stringify(sanitizeThemeConfig(item.config)) === target
       );
       return found ? found.key : '';
     }
 
-    presetSelect.value = presetKeyMatchingCurrentTheme() || (THEME_PRESETS[0] && THEME_PRESETS[0].key) || '';
-
     function applySelectedPresetToDraftAndPreview() {
-      const preset = THEME_PRESETS.find((item) => item.key === presetSelect.value);
+      const preset = themePresetList.find((item) => item.key === presetSelect.value);
       if (!preset) return;
       const applied = sanitizeThemeConfig(preset.config);
       Object.keys(applied).forEach((sectionKey) => {
@@ -5797,8 +5734,36 @@
     }
 
     presetSelect.addEventListener('change', () => {
+      if (!presetSelect.value) return;
       applySelectedPresetToDraftAndPreview();
     });
+
+    loadThemePresetsFromFiles()
+      .then((list) => {
+        themePresetList = list;
+        presetSelect.disabled = false;
+        presetSelect.innerHTML = themePresetList
+          .map(
+            (preset) =>
+              `<option value="${escapeHtml(preset.key)}">${escapeHtml(preset.label)}</option>`
+          )
+          .join('');
+        const match = presetKeyMatchingCurrentTheme();
+        presetSelect.value = match || (themePresetList[0] && themePresetList[0].key) || '';
+        if (!presetSelect.value && themePresetList.length) presetSelect.selectedIndex = 0;
+      })
+      .catch(() => {
+        themePresetList = getBuiltinThemePresetFallback();
+        presetSelect.disabled = false;
+        presetSelect.innerHTML = themePresetList
+          .map(
+            (preset) =>
+              `<option value="${escapeHtml(preset.key)}">${escapeHtml(preset.label)}</option>`
+          )
+          .join('');
+        presetSelect.value = themePresetList[0] ? themePresetList[0].key : '';
+        setStatus('Could not load theme presets from theme/; using built-in default.', true);
+      });
 
     resetBtn.addEventListener('click', () => {
       const reset = sanitizeThemeConfig(DEFAULT_THEME_CONFIG);
