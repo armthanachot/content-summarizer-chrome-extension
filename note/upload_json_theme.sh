@@ -38,6 +38,7 @@ curl --location 'https://content-summarizer-api-production.up.railway.app/api/v1
     "messageAssistantBackground": "#24283B",
     "messageUserStart": "#F7768E",
     "messageUserEnd": "#BB9AF7",
+    "messageUserBorder": "#F87098",
     "inputBackground": "#15161E",
     "chatInputText": "#C0CAF5",
     "assistantMdHeading": "#7DCFFF",

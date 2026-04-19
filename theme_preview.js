@@ -102,7 +102,7 @@ Canada / Mexico / US — next formal review window
         if (message.role === 'user') {
           return `
             <div class="theme-preview-chat-user-wrap">
-              <div class="theme-preview-chat-user" style="background: linear-gradient(135deg, ${theme.chat.messageUserStart}, ${theme.chat.messageUserEnd}); color: ${theme.chat.headerText};">
+              <div class="theme-preview-chat-user" style="background: linear-gradient(135deg, ${theme.chat.messageUserStart}, ${theme.chat.messageUserEnd}); border: 1px solid ${theme.chat.messageUserBorder || '#3B82F6'}; color: ${theme.chat.headerText};">
                 ${escapeHtml(message.content)}
               </div>
             </div>

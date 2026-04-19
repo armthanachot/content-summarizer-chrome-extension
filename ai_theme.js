@@ -47,6 +47,7 @@
     'messageAssistantBackground',
     'messageUserStart',
     'messageUserEnd',
+    'messageUserBorder',
     'inputBackground',
     'chatInputText',
     'assistantMdHeading',

@@ -39,6 +39,7 @@
     "messageAssistantBackground": "#121214",
     "messageUserStart": "#F97316",
     "messageUserEnd": "#C2410C",
+    "messageUserBorder": "#EA915E",
     "inputBackground": "#121214",
     "chatInputText": "#F5F5F4",
     "assistantMdHeading": "#FB923C",

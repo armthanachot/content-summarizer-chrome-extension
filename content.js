@@ -71,6 +71,7 @@
       messageAssistantBackground: '#1E293B',
       messageUserStart: '#1D4ED8',
       messageUserEnd: '#1E3A8A',
+      messageUserBorder: '#3B82F6',
       inputBackground: '#1E293B',
       chatInputText: '#F1F5F9',
       assistantMdHeading: '#93C5FD',
@@ -142,6 +143,7 @@
         { key: 'messageAssistantBackground', label: 'Assistant bubble' },
         { key: 'messageUserStart', label: 'User bubble gradient start' },
         { key: 'messageUserEnd', label: 'User bubble gradient end' },
+        { key: 'messageUserBorder', label: 'User bubble border' },
         { key: 'inputBackground', label: 'Chat input background' },
         { key: 'chatInputText', label: 'Chat input text' },
         { key: 'assistantMdHeading', label: 'Assistant markdown heading' },
@@ -2411,7 +2413,7 @@
     .summary-chat-msg-user {
       max-width: 85%;
       background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
-      border: 1px solid #3b82f6;
+      border: 1px solid var(--cs-chat-user-border, #3b82f6);
       border-radius: 14px 14px 4px 14px;
       padding: 10px 14px;
       line-height: 1.55;
@@ -3202,6 +3204,7 @@
         var(--cs-chat-user-start, #1D4ED8) 0%,
         var(--cs-chat-user-end, #1E3A8A) 100%
       ) !important;
+      border-color: var(--cs-chat-user-border, #3b82f6) !important;
     }
 
     .summary-chat-input-wrap {
@@ -3697,6 +3700,7 @@
       '--cs-chat-assistant-bg': chat.messageAssistantBackground,
       '--cs-chat-user-start': chat.messageUserStart,
       '--cs-chat-user-end': chat.messageUserEnd,
+      '--cs-chat-user-border': chat.messageUserBorder,
       '--cs-chat-input-bg': chat.inputBackground,
       '--cs-chat-input-text': chat.chatInputText,
       '--cs-chat-md-heading': chat.assistantMdHeading,
