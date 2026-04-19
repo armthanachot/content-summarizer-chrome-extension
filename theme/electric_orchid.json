@@ -15,7 +15,10 @@
     "summaryPanelBorder": "#E1D5F5",
     "summaryTitleColor": "#4B0082",
     "summaryMarkdownText": "#2C3E50",
-    "summaryMarkdownAccent": "#D81B60"
+    "summaryMarkdownAccent": "#D81B60",
+    "summaryMarkdownPreBg": "#EDE7F6",
+    "summaryMarkdownPreText": "#2D1B4D",
+    "summaryMarkdownPreBorder": "#D1C4E9"
   },
   "explain": {
     "panelBackground": "#FFFFFF",

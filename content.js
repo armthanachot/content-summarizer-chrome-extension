@@ -45,6 +45,9 @@
       summaryTitleColor: '#2E7D32',
       summaryMarkdownText: '#333333',
       summaryMarkdownAccent: '#2E7D32',
+      summaryMarkdownPreBg: '#F1F8E9',
+      summaryMarkdownPreText: '#1B4332',
+      summaryMarkdownPreBorder: '#C8E6C9',
     },
     explain: {
       panelBackground: '#FFFFFF',
@@ -105,6 +108,9 @@
         { key: 'summaryTitleColor', label: 'Summary title color' },
         { key: 'summaryMarkdownText', label: 'Summary markdown text' },
         { key: 'summaryMarkdownAccent', label: 'Summary markdown accent' },
+        { key: 'summaryMarkdownPreBg', label: 'Summary markdown code block background' },
+        { key: 'summaryMarkdownPreText', label: 'Summary markdown code block text' },
+        { key: 'summaryMarkdownPreBorder', label: 'Summary markdown code block border' },
       ],
     },
     {
@@ -746,6 +752,26 @@
       padding: 10px;
       font-size: 12px;
       line-height: 1.45;
+    }
+
+    .theme-preview-summary-body pre {
+      background: var(--cs-summary-md-pre-bg, #F1F8E9);
+      color: var(--cs-summary-md-pre-text, #1B4332);
+      border: 1px solid var(--cs-summary-md-pre-border, #C8E6C9);
+      padding: 8px 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 8px 0;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .theme-preview-summary-body pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
     }
 
     .theme-preview-chat-body {
@@ -1572,8 +1598,9 @@
     }
 
     .response-content pre {
-      background: #1B2F1B;
-      color: #A5D6A7;
+      background: var(--cs-summary-md-pre-bg, #F1F8E9);
+      color: var(--cs-summary-md-pre-text, #1B4332);
+      border: 1px solid var(--cs-summary-md-pre-border, #C8E6C9);
       padding: 14px 16px;
       border-radius: 8px;
       overflow-x: auto;
@@ -2973,10 +3000,22 @@
     .response-content p,
     .response-content li,
     .response-content td,
-    .response-content code,
-    .response-content pre,
     .response-content .placeholder-text {
       color: var(--cs-summary-markdown-text, #333333) !important;
+    }
+
+    .response-content code {
+      color: var(--cs-summary-markdown-accent, #2E7D32) !important;
+    }
+
+    .response-content pre {
+      background: var(--cs-summary-md-pre-bg, #F1F8E9) !important;
+      color: var(--cs-summary-md-pre-text, #1B4332) !important;
+      border-color: var(--cs-summary-md-pre-border, #C8E6C9) !important;
+    }
+
+    .response-content pre code {
+      color: inherit !important;
     }
 
     .response-content h1,
@@ -3596,6 +3635,9 @@
       '--cs-summary-panel-title': summary.summaryTitleColor,
       '--cs-summary-markdown-text': summary.summaryMarkdownText,
       '--cs-summary-markdown-accent': summary.summaryMarkdownAccent,
+      '--cs-summary-md-pre-bg': summary.summaryMarkdownPreBg,
+      '--cs-summary-md-pre-text': summary.summaryMarkdownPreText,
+      '--cs-summary-md-pre-border': summary.summaryMarkdownPreBorder,
       '--cs-explain-panel-bg': explain.panelBackground,
       '--cs-explain-border': explain.borderColor,
       '--cs-explain-header-start': explain.headerStart,

@@ -23,6 +23,9 @@
     'summaryTitleColor',
     'summaryMarkdownText',
     'summaryMarkdownAccent',
+    'summaryMarkdownPreBg',
+    'summaryMarkdownPreText',
+    'summaryMarkdownPreBorder',
   ];
   const EXPLAIN_KEYS = [
     'panelBackground',
