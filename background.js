@@ -1,5 +1,5 @@
 // Service worker entry: load all worker scripts first, then shared helpers, then Chrome listeners.
-// Order: ai_client before expert-advisors / ai_theme (they use callOpenAI / callGemini).
+// Order: ai_client before expert-advisors / ai_theme (they use callOpenAI / callGemini / callVertex).
 
 importScripts(
   'ai_config.js',
@@ -44,12 +44,27 @@ function getProviderTaskConfig(provider, taskType) {
 /**
  * @returns {{ model: string, url: string }}
  */
-function resolveModelSelection(provider, taskType, requestedModel) {
+function resolveModelSelection(provider, taskType, requestedModel, vertexProjectId) {
   const normalized = normalizeProvider(provider);
   const config = PROVIDER_CONFIGS[normalized];
   const safeRequestedModel =
     typeof requestedModel === 'string' ? requestedModel.trim() : '';
   const base = getProviderTaskConfig(normalized, taskType);
+
+  if (normalized === 'vertex_ai') {
+    const pid = typeof vertexProjectId === 'string' ? vertexProjectId.trim() : '';
+    if (!pid) {
+      throw new Error('Missing Google Cloud project ID for Vertex AI.');
+    }
+    const modelToUse =
+      safeRequestedModel && config.models.supported.includes(safeRequestedModel)
+        ? safeRequestedModel
+        : base.model;
+    return {
+      model: modelToUse,
+      url: vertexGenerateContentUrl(pid, modelToUse),
+    };
+  }
 
   if (safeRequestedModel && config.models.supported.includes(safeRequestedModel)) {
     if (normalized === 'gemini') {
@@ -65,15 +80,24 @@ function resolveModelSelection(provider, taskType, requestedModel) {
   return base;
 }
 
-async function initializeAI(provider, apiKey, modelPreference) {
+async function initializeAI(provider, apiKey, modelPreference, vertexProjectId) {
   const normalized = normalizeProvider(provider);
   if (!apiKey || !apiKey.trim()) {
     throw new Error(`Missing API key for ${getProviderLabel(normalized)}.`);
   }
+  const trimmedKey = apiKey.trim();
+  let vPid = '';
+  if (normalized === 'vertex_ai') {
+    vPid = typeof vertexProjectId === 'string' ? vertexProjectId.trim() : '';
+    if (!vPid) {
+      throw new Error('Missing Google Cloud project ID for Vertex AI.');
+    }
+  }
   return {
     provider: normalized,
-    apiKey: apiKey.trim(),
+    apiKey: trimmedKey,
     modelPreference,
+    vertexProjectId: vPid,
   };
 }
 
@@ -214,7 +238,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       request.maxWords,
       request.targetLang,
       request.model,
-      request.sameLanguageAsContent
+      request.sameLanguageAsContent,
+      request.vertexProjectId
     )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
@@ -227,7 +252,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       request.apiKey,
       request.content,
       request.targetLang,
-      request.model
+      request.model,
+      request.vertexProjectId
     )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
@@ -242,7 +268,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       request.maxWords,
       request.targetLang,
       request.model,
-      request.sameLanguageAsContent
+      request.sameLanguageAsContent,
+      request.vertexProjectId
     )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
@@ -255,7 +282,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       request.apiKey,
       request.term,
       request.context,
-      request.model
+      request.model,
+      request.vertexProjectId
     )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
@@ -270,7 +298,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       request.messages,
       request.model,
       request.advisorPersona,
-      request.sourceUrl
+      request.sourceUrl,
+      request.vertexProjectId
     )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
@@ -282,7 +311,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       request.provider,
       request.apiKey,
       request.summaryContext,
-      request.model
+      request.model,
+      request.vertexProjectId
     )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
@@ -294,7 +324,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       request.provider,
       request.apiKey,
       request.currentTheme,
-      request.model
+      request.model,
+      request.vertexProjectId
     )
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));

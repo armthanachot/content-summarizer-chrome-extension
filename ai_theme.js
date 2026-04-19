@@ -6,6 +6,7 @@
 (function aiThemeDesignerModule() {
   const postOpenAI = callOpenAI;
   const postGemini = callGemini;
+  const postVertex = callVertex;
   const SCHEMA_NAME = 'content_summarizer_theme';
 
   const SUMMARY_KEYS = [
@@ -293,9 +294,46 @@
     return normalizeThemePayload(parsed);
   }
 
+  async function fetchVertex(apiKey, model, url, currentTheme, presetDescriptor) {
+    const presetMeta =
+      presetDescriptor && typeof presetDescriptor === 'object'
+        ? presetDescriptor
+        : { entries: [], labels: [] };
+    const body = {
+      system_instruction: {
+        parts: [{ text: buildSystemInstruction() }],
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: buildUserContent(currentTheme) },
+            { text: buildExistingPresetsUserContent(presetMeta) },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 4096,
+        responseMimeType: 'application/json',
+        responseJsonSchema: getThemeJsonSchema(),
+      },
+    };
+    const data = await postVertex(apiKey, url, body);
+    const jsonText = extractGeminiJsonText(data);
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch {
+      throw new Error('Vertex AI returned JSON that could not be parsed.');
+    }
+    return normalizeThemePayload(parsed);
+  }
+
   self.AIThemeDesigner = {
     fetchOpenAI,
     fetchGemini,
+    fetchVertex,
     normalizeThemePayload,
   };
 })();

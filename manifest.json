@@ -6,7 +6,8 @@
   "permissions": ["storage", "activeTab", "scripting", "contextMenus", "downloads"],
   "host_permissions": [
     "<all_urls>",
-    "https://alztwhogvtlrzqbngocs.supabase.co/*"
+    "https://alztwhogvtlrzqbngocs.supabase.co/*",
+    "https://aiplatform.googleapis.com/*"
   ],
   "action": {
     "default_title": "Content Summarizer",

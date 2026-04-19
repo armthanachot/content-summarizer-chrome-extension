@@ -91,10 +91,15 @@ async function persistAiGeneratedThemeAssets(normalized) {
   };
 }
 
-async function generateAiTheme(provider, apiKey, currentTheme, modelPreference) {
+async function generateAiTheme(provider, apiKey, currentTheme, modelPreference, vertexProjectId) {
   const presetDescriptor = await loadThemePresetDescriptorForAiPrompt();
-  const client = await initializeAI(provider, apiKey, modelPreference);
-  const { model, url } = resolveModelSelection(client.provider, 'theme', client.modelPreference);
+  const client = await initializeAI(provider, apiKey, modelPreference, vertexProjectId);
+  const { model, url } = resolveModelSelection(
+    client.provider,
+    'theme',
+    client.modelPreference,
+    client.vertexProjectId
+  );
   const normalized =
     client.provider === 'gemini'
       ? await self.AIThemeDesigner.fetchGemini(
@@ -104,13 +109,21 @@ async function generateAiTheme(provider, apiKey, currentTheme, modelPreference) 
           currentTheme,
           presetDescriptor
         )
-      : await self.AIThemeDesigner.fetchOpenAI(
-          client.apiKey,
-          model,
-          url,
-          currentTheme,
-          presetDescriptor
-        );
+      : client.provider === 'vertex_ai'
+        ? await self.AIThemeDesigner.fetchVertex(
+            client.apiKey,
+            model,
+            url,
+            currentTheme,
+            presetDescriptor
+          )
+        : await self.AIThemeDesigner.fetchOpenAI(
+            client.apiKey,
+            model,
+            url,
+            currentTheme,
+            presetDescriptor
+          );
 
   let persistResult = null;
   try {

@@ -1,6 +1,6 @@
 // Summarize from pasted text and summarize-from-URL (fetch + extract + summarize).
 // Depends on background.js: initializeAI, resolveModelSelection, extractTextFromHtml.
-// Depends on ai_client.js: callOpenAI, callGemini.
+// Depends on ai_client.js: callOpenAI, callGemini, callVertex.
 
 async function summarizeContent(
   provider,
@@ -9,7 +9,8 @@ async function summarizeContent(
   maxWords,
   targetLang,
   modelPreference,
-  sameLanguageAsContent
+  sameLanguageAsContent,
+  vertexProjectId
 ) {
   let systemPrompt = `You are an expert content analyst and summarizer. Follow this process:
 
@@ -37,9 +38,14 @@ Your summary MUST:
       '\n- Write the entire summary in the same language as the source content (match the dominant language of the input).';
   }
 
-  const client = await initializeAI(provider, apiKey, modelPreference);
+  const client = await initializeAI(provider, apiKey, modelPreference, vertexProjectId);
   const userPrompt = `Analyze the context of the following content, then summarize it:\n\n${content}`;
-  const { model, url } = resolveModelSelection(client.provider, 'summarize', client.modelPreference);
+  const { model, url } = resolveModelSelection(
+    client.provider,
+    'summarize',
+    client.modelPreference,
+    client.vertexProjectId
+  );
 
   if (client.provider === 'gemini') {
     const body = {
@@ -58,6 +64,26 @@ Your summary MUST:
       .join('')
       .trim();
     if (!text) throw new Error('Gemini returned an empty response.');
+    return text;
+  }
+
+  if (client.provider === 'vertex_ai') {
+    const body = {
+      contents: [
+        { role: 'MODEL', parts: [{ text: systemPrompt }] },
+        { role: 'USER', parts: [{ text: userPrompt }] },
+      ],
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 4096,
+      },
+    };
+    const data = await callVertex(client.apiKey, url, body);
+    const text = data?.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text || '')
+      .join('')
+      .trim();
+    if (!text) throw new Error('Vertex AI returned an empty response.');
     return text;
   }
 
@@ -81,7 +107,8 @@ async function fetchAndSummarize(
   maxWords,
   targetLang,
   modelPreference,
-  sameLanguageAsContent
+  sameLanguageAsContent,
+  vertexProjectId
 ) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -121,6 +148,7 @@ async function fetchAndSummarize(
     maxWords,
     targetLang,
     modelPreference,
-    sameLanguageAsContent
+    sameLanguageAsContent,
+    vertexProjectId
   );
 }

@@ -7,6 +7,7 @@
 (function expertAdvisorsModule() {
   const postOpenAI = callOpenAI;
   const postGemini = callGemini;
+  const postVertex = callVertex;
   const SCHEMA_NAME = 'expert_advisors';
 
   function getExpertAdvisorsJsonSchema() {
@@ -207,9 +208,46 @@
     return normalizeExperts(parsed);
   }
 
+  /**
+   * @returns {Promise<{ title: string, bio: string, instruction: string }[]>}
+   */
+  async function fetchVertex(apiKey, model, url, summaryMarkdown) {
+    const systemText = buildSystemInstruction();
+    const userText = buildUserContent(summaryMarkdown);
+
+    const body = {
+      contents: [
+        {
+          role: 'MODEL',
+          parts: [{ text: systemText }],
+        },
+        {
+          role: 'USER',
+          parts: [{ text: userText }],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.35,
+        maxOutputTokens: 2048,
+        responseMimeType: 'application/json',
+        responseJsonSchema: getExpertAdvisorsJsonSchema(),
+      },
+    };
+    const data = await postVertex(apiKey, url, body);
+    const jsonText = extractGeminiJsonText(data);
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch (e) {
+      throw new Error('Vertex AI returned JSON that could not be parsed.');
+    }
+    return normalizeExperts(parsed);
+  }
+
   self.ExpertAdvisors = {
     fetchOpenAI,
     fetchGemini,
+    fetchVertex,
     normalizeExperts,
     truncateToWords,
   };

@@ -1,6 +1,6 @@
 // Chat about summary (OpenAI / Gemini), optional source enrichment, expert advisor suggestions.
 // Depends on background.js: initializeAI, resolveModelSelection, extractTextFromHtml.
-// Depends on ai_client.js: callOpenAI, callGemini.
+// Depends on ai_client.js: callOpenAI, callGemini, callVertex.
 // Depends on self.ExpertAdvisors from expert-advisors.js.
 
 // let CHAT_SYSTEM_INSTRUCTION = `You are a helpful assistant. The user is discussing a summary they generated. Use the provided summary as your primary context. Answer questions based on that summary; if something is not covered in the summary, say so clearly. Be concise and use markdown when it helps (headings, bullets, bold). Respond in the same language the user writes in unless they ask otherwise. Stay accurate and grounded in the summary—do not invent credentials or affiliations.`;
@@ -125,13 +125,18 @@ async function fetchSourceContextSnippet(url) {
   }
 }
 
-async function suggestExpertAdvisors(provider, apiKey, summaryContext, modelPreference) {
+async function suggestExpertAdvisors(provider, apiKey, summaryContext, modelPreference, vertexProjectId) {
   const trimmed = (summaryContext || '').trim();
   if (!trimmed) {
     throw new Error('No summary context available for expert suggestions.');
   }
-  const client = await initializeAI(provider, apiKey, modelPreference);
-  const resolved = resolveModelSelection(client.provider, 'advisors', client.modelPreference);
+  const client = await initializeAI(provider, apiKey, modelPreference, vertexProjectId);
+  const resolved = resolveModelSelection(
+    client.provider,
+    'advisors',
+    client.modelPreference,
+    client.vertexProjectId
+  );
   const experts =
     client.provider === 'gemini'
       ? await self.ExpertAdvisors.fetchGemini(
@@ -140,12 +145,19 @@ async function suggestExpertAdvisors(provider, apiKey, summaryContext, modelPref
           resolved.url,
           trimmed
         )
-      : await self.ExpertAdvisors.fetchOpenAI(
-          client.apiKey,
-          resolved.model,
-          resolved.url,
-          trimmed
-        );
+      : client.provider === 'vertex_ai'
+        ? await self.ExpertAdvisors.fetchVertex(
+            client.apiKey,
+            resolved.model,
+            resolved.url,
+            trimmed
+          )
+        : await self.ExpertAdvisors.fetchOpenAI(
+            client.apiKey,
+            resolved.model,
+            resolved.url,
+            trimmed
+          );
   return [
     {
       title: 'default',
@@ -164,7 +176,8 @@ async function chatAboutSummary(
   messages,
   modelPreference,
   advisorPersona,
-  sourceUrl
+  sourceUrl,
+  vertexProjectId
 ) {
   const trimmedSummary = (summaryContext || '').trim();
   if (!trimmedSummary) {
@@ -194,11 +207,27 @@ async function chatAboutSummary(
     }
   }
 
-  const client = await initializeAI(provider, apiKey, modelPreference);
-  const resolved = resolveModelSelection(client.provider, 'chat', client.modelPreference);
+  const client = await initializeAI(provider, apiKey, modelPreference, vertexProjectId);
+  const resolved = resolveModelSelection(
+    client.provider,
+    'chat',
+    client.modelPreference,
+    client.vertexProjectId
+  );
 
   if (client.provider === 'gemini') {
     return callGeminiChat(
+      client.apiKey,
+      resolved.model,
+      resolved.url,
+      trimmedSummary,
+      history,
+      advisorPersona,
+      sourceContextBlock
+    );
+  }
+  if (client.provider === 'vertex_ai') {
+    return callVertexChat(
       client.apiKey,
       resolved.model,
       resolved.url,
@@ -308,6 +337,45 @@ async function callGeminiChat(
     .join('')
     .trim();
   if (!text) throw new Error('Gemini returned an empty response.');
+  return text;
+}
+
+async function callVertexChat(
+  apiKey,
+  model,
+  url,
+  summaryContext,
+  history,
+  advisorPersona,
+  sourceContextBlock
+) {
+  const systemBlock = buildChatSystemBlock(summaryContext, advisorPersona, sourceContextBlock);
+  const body = {
+    contents: [
+      {
+        role: 'MODEL',
+        parts: [{ text: systemBlock }],
+      },
+      ...history.map((m) => ({
+        role: m.role === 'user' ? 'USER' : 'MODEL',
+        parts:
+          m.role === 'user'
+            ? buildGeminiUserParts(m.content || '', m.images)
+            : [{ text: m.content || '' }],
+      })),
+    ],
+    generationConfig: {
+      temperature: 0.4,
+      maxOutputTokens: 4096,
+    },
+  };
+
+  const data = await callVertex(apiKey, url, body);
+  const text = data?.candidates?.[0]?.content?.parts
+    ?.map((part) => part.text || '')
+    .join('')
+    .trim();
+  if (!text) throw new Error('Vertex AI returned an empty response.');
   return text;
 }
 

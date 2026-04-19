@@ -5,13 +5,16 @@
   const PROVIDER_OPTIONS = [
     { value: 'openai', label: 'OpenAI' },
     { value: 'gemini', label: 'Gemini' },
+    { value: 'vertex_ai', label: 'Vertex AI' },
   ];
   const STORAGE_KEYS = {
     provider: 'CONTENT_SUMMARIZER_AI_PROVIDER',
     theme: 'CONTENT_SUMMARIZER_DYNAMIC_THEME',
+    vertexProject: 'CONTENT_SUMMARIZER_VERTEX_PROJECT_ID',
     tokens: {
       openai: 'CONTENT_SUMMARIZER_OPENAI_TOKEN',
       gemini: 'CONTENT_SUMMARIZER_GEMINI_TOKEN',
+      vertex_ai: 'CONTENT_SUMMARIZER_VERTEX_API_KEY',
     },
     /** AI-generated presets merged at runtime (same shape as theme/*.json files). */
     customThemePresets: 'CONTENT_SUMMARIZER_CUSTOM_THEME_PRESETS',
@@ -356,6 +359,26 @@
       color: #6B7B6B;
       text-align: center;
       line-height: 1.5;
+    }
+
+    .key-view .key-vertex-wrap {
+      width: 100%;
+      max-width: 380px;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      align-self: center;
+    }
+
+    .key-view .key-vertex-wrap.visible {
+      display: flex;
+    }
+
+    .key-view .key-field-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #455A45;
+      align-self: flex-start;
     }
 
     .key-view .key-input {
@@ -3340,7 +3363,9 @@
   let apiTokens = {
     openai: '',
     gemini: '',
+    vertex_ai: '',
   };
+  let vertexProjectId = '';
   let rawResponse = '';
   let originalResponse = '';
   let summarySourceUrl = '';
@@ -4039,7 +4064,7 @@
     if (!summaryChatPopover) return;
     const btn = summaryChatPopover.querySelector('.summary-chat-expert-btn');
     if (!btn) return;
-    const ok = !!(rawResponse || '').trim() && !!getActiveApiKey();
+    const ok = !!(rawResponse || '').trim() && hasProviderCredentials();
     btn.disabled = !ok || summaryChatAdvisorsLoading;
   }
 
@@ -4148,7 +4173,7 @@
     if (!summaryChatPopover || summaryChatAdvisorsLoading) return;
     const context = (rawResponse || '').trim();
     if (!context) return;
-    if (!getActiveApiKey()) {
+    if (!hasProviderCredentials()) {
       const errEl = summaryChatPopover.querySelector('.summary-chat-advisors-error');
       if (errEl) {
         errEl.textContent = 'Add an API key in settings first.';
@@ -4180,12 +4205,12 @@
       const experts = await new Promise((resolve, reject) => {
         try {
           chrome.runtime.sendMessage(
-            {
+            withVertexProjectIdIfNeeded({
               type: 'suggest-expert-advisors',
               provider: currentProvider,
               apiKey: getActiveApiKey(),
               summaryContext: context,
-            },
+            }),
             (resp) => {
               if (chrome.runtime.lastError) {
                 reject(new Error(chrome.runtime.lastError.message));
@@ -4778,7 +4803,7 @@
       if (!summaryChatPopover) return;
       const titleEl = summaryChatPopover.querySelector('.summary-chat-title');
       if (titleEl) titleEl.textContent = 'Fast Chat';
-      if (!getActiveApiKey()) {
+      if (!hasProviderCredentials()) {
         renderStandaloneFastChatNeedKey();
         positionSummaryChatPopover();
         summaryChatPopover.classList.add('visible');
@@ -4811,6 +4836,8 @@
           STORAGE_KEYS.provider,
           STORAGE_KEYS.tokens.openai,
           STORAGE_KEYS.tokens.gemini,
+          STORAGE_KEYS.tokens.vertex_ai,
+          STORAGE_KEYS.vertexProject,
           STORAGE_KEYS.theme,
         ],
         (result) => {
@@ -4818,6 +4845,8 @@
           currentProvider = normalizeProvider(result[STORAGE_KEYS.provider]);
           setTokenForProvider('openai', result[STORAGE_KEYS.tokens.openai] || '');
           setTokenForProvider('gemini', result[STORAGE_KEYS.tokens.gemini] || '');
+          setTokenForProvider('vertex_ai', result[STORAGE_KEYS.tokens.vertex_ai] || '');
+          vertexProjectId = (result[STORAGE_KEYS.vertexProject] || '').trim();
           themeConfig = sanitizeThemeConfig(result[STORAGE_KEYS.theme]);
           applyThemeConfigToUi();
           finish();
@@ -4866,7 +4895,7 @@
       const reply = await new Promise((resolve, reject) => {
         try {
           chrome.runtime.sendMessage(
-            {
+            withVertexProjectIdIfNeeded({
               type: 'chat-about-summary',
               provider: currentProvider,
               apiKey: getActiveApiKey(),
@@ -4874,7 +4903,7 @@
               sourceUrl: summarySourceUrl,
               messages: requestMessages,
               advisorPersona: requestAdvisorPersona,
-            },
+            }),
             (resp) => {
               if (chrome.runtime.lastError) {
                 reject(new Error(chrome.runtime.lastError.message));
@@ -4944,6 +4973,25 @@
     const normalized = normalizeProvider(provider);
     const option = PROVIDER_OPTIONS.find((item) => item.value === normalized);
     return option ? option.label : 'OpenAI';
+  }
+
+  function getVertexProjectId() {
+    return (vertexProjectId || '').trim();
+  }
+
+  function hasProviderCredentials() {
+    const p = normalizeProvider(currentProvider);
+    if (p === 'vertex_ai') {
+      return !!(getActiveApiKey() && getVertexProjectId());
+    }
+    return !!getActiveApiKey();
+  }
+
+  function withVertexProjectIdIfNeeded(payload) {
+    if (normalizeProvider(payload.provider || currentProvider) === 'vertex_ai') {
+      return { ...payload, vertexProjectId: getVertexProjectId() };
+    }
+    return payload;
   }
 
   // ===================== Selection Popover =====================
@@ -5568,7 +5616,7 @@
     ensureModal();
     showModal();
 
-    if (getActiveApiKey()) {
+    if (hasProviderCredentials()) {
       showMainView();
       return;
     }
@@ -5581,6 +5629,8 @@
           STORAGE_KEYS.provider,
           STORAGE_KEYS.tokens.openai,
           STORAGE_KEYS.tokens.gemini,
+          STORAGE_KEYS.tokens.vertex_ai,
+          STORAGE_KEYS.vertexProject,
           STORAGE_KEYS.theme,
         ],
         (result) => {
@@ -5588,9 +5638,11 @@
           currentProvider = normalizeProvider(result[STORAGE_KEYS.provider]);
           setTokenForProvider('openai', result[STORAGE_KEYS.tokens.openai] || '');
           setTokenForProvider('gemini', result[STORAGE_KEYS.tokens.gemini] || '');
+          setTokenForProvider('vertex_ai', result[STORAGE_KEYS.tokens.vertex_ai] || '');
+          vertexProjectId = (result[STORAGE_KEYS.vertexProject] || '').trim();
           themeConfig = sanitizeThemeConfig(result[STORAGE_KEYS.theme]);
           applyThemeConfigToUi();
-          if (getActiveApiKey()) showMainView();
+          if (hasProviderCredentials()) showMainView();
         }
       );
     } catch {}
@@ -5627,22 +5679,35 @@
       <h2>Set AI Provider API Key</h2>
       <p>Your key is stored locally in your browser and only used for your selected provider.</p>
       <select class="key-input provider-select">${buildProviderOptions(currentProvider)}</select>
-      <input type="password" placeholder="Enter API key..." class="key-input" />
+      <div class="key-vertex-wrap">
+        <span class="key-field-label">Google Cloud project ID</span>
+        <input type="text" autocomplete="off" class="key-input vertex-project-input" />
+      </div>
+      <span class="key-field-label api-key-label">API key</span>
+      <input type="password" placeholder="Enter API key..." class="key-input api-key-input" />
       <span class="error-msg">${errorMsg || ''}</span>
       <button class="save-btn">Save & Continue</button>
     `;
     modalBody.appendChild(view);
 
     const providerSelect = view.querySelector('.provider-select');
-    const input = view.querySelector('input.key-input');
+    const vertexWrap = view.querySelector('.key-vertex-wrap');
+    const vertexInput = view.querySelector('.vertex-project-input');
+    const apiKeyLabel = view.querySelector('.api-key-label');
+    const input = view.querySelector('.api-key-input');
     const errSpan = view.querySelector('.error-msg');
     const saveBtn = view.querySelector('.save-btn');
 
     function syncKeyInputByProvider() {
       const selectedProvider = normalizeProvider(providerSelect.value);
       providerSelect.value = selectedProvider;
+      const isVertex = selectedProvider === 'vertex_ai';
+      if (vertexWrap) vertexWrap.classList.toggle('visible', isVertex);
+      if (apiKeyLabel) apiKeyLabel.style.display = isVertex ? 'block' : 'none';
+      if (vertexInput) vertexInput.value = isVertex ? getVertexProjectId() : '';
       input.value = getActiveApiKey(selectedProvider);
-      input.placeholder = selectedProvider === 'gemini' ? 'AIza...' : 'sk-...';
+      input.placeholder =
+        selectedProvider === 'gemini' || selectedProvider === 'vertex_ai' ? 'AIza...' : 'sk-...';
     }
 
     syncKeyInputByProvider();
@@ -5655,28 +5720,55 @@
     saveBtn.addEventListener('click', () => {
       const selectedProvider = normalizeProvider(providerSelect.value);
       const val = input.value.trim();
-      if (!val) {
+      const projectVal = vertexInput ? vertexInput.value.trim() : '';
+      if (selectedProvider === 'vertex_ai') {
+        if (!projectVal) {
+          errSpan.textContent = 'Please enter your Google Cloud project ID.';
+          return;
+        }
+        if (!val) {
+          errSpan.textContent = 'Please enter a valid API key (e.g. AIza...).';
+          return;
+        }
+      } else if (!val) {
         errSpan.textContent = `Please enter a valid ${getProviderLabel(selectedProvider)} API key.`;
         return;
       }
 
       currentProvider = selectedProvider;
+      if (selectedProvider === 'vertex_ai') {
+        vertexProjectId = projectVal;
+      }
       setTokenForProvider(selectedProvider, val);
       try {
-        chrome.storage.local.set({
+        const payload = {
           [STORAGE_KEYS.provider]: currentProvider,
           [STORAGE_KEYS.tokens.openai]: apiTokens.openai,
           [STORAGE_KEYS.tokens.gemini]: apiTokens.gemini,
-        });
+          [STORAGE_KEYS.tokens.vertex_ai]: apiTokens.vertex_ai,
+          [STORAGE_KEYS.vertexProject]: vertexProjectId,
+        };
+        chrome.storage.local.set(payload);
       } catch {}
       showMainView();
     });
 
+    function focusPrimaryField() {
+      const isVertex = normalizeProvider(providerSelect.value) === 'vertex_ai';
+      const target = isVertex && vertexInput && !getVertexProjectId().trim() ? vertexInput : input;
+      setTimeout(() => target.focus(), 50);
+    }
+
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') saveBtn.click();
     });
+    if (vertexInput) {
+      vertexInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveBtn.click();
+      });
+    }
 
-    setTimeout(() => input.focus(), 50);
+    focusPrimaryField();
   }
 
   function showThemeSetupView() {
@@ -5879,8 +5971,8 @@
     presetSelect.innerHTML = '<option value="">Loading presets…</option>';
     presetSelect.disabled = true;
 
-    function presetKeyMatchingCurrentTheme() {
-      const target = JSON.stringify(sanitizeThemeConfig(themeConfig));
+    function presetKeyMatchingDraft(draft) {
+      const target = JSON.stringify(sanitizeThemeConfig(draft));
       const found = themePresetList.find(
         (item) => JSON.stringify(sanitizeThemeConfig(item.config)) === target
       );
@@ -5923,15 +6015,16 @@
                 `<option value="${escapeHtml(preset.key)}">${escapeHtml(preset.label)}</option>`
             )
             .join('');
+          const matchDraft = presetKeyMatchingDraft(draftTheme);
           const nextKey =
-            prevKey && list.some((p) => p.key === prevKey)
+            (prevKey && list.some((p) => p.key === prevKey)
               ? prevKey
-              : presetKeyMatchingCurrentTheme() || (list[0] && list[0].key) || '';
+              : null) ||
+            (matchDraft && list.some((p) => p.key === matchDraft) ? matchDraft : '') ||
+            (list[0] && list[0].key) ||
+            '';
           presetSelect.value = nextKey || '';
           if (!presetSelect.value && list.length) presetSelect.selectedIndex = 0;
-          if (prevKey && list.some((p) => p.key === prevKey)) {
-            applySelectedPresetToDraftAndPreview();
-          }
           setStatus('Theme list updated.', false);
         } catch {
           setStatus('Could not reload theme list.', true);
@@ -5953,7 +6046,7 @@
               `<option value="${escapeHtml(preset.key)}">${escapeHtml(preset.label)}</option>`
           )
           .join('');
-        const match = presetKeyMatchingCurrentTheme();
+        const match = presetKeyMatchingDraft(draftTheme);
         presetSelect.value = match || (themePresetList[0] && themePresetList[0].key) || '';
         if (!presetSelect.value && themePresetList.length) presetSelect.selectedIndex = 0;
       })
@@ -5966,7 +6059,10 @@
               `<option value="${escapeHtml(preset.key)}">${escapeHtml(preset.label)}</option>`
           )
           .join('');
-        presetSelect.value = themePresetList[0] ? themePresetList[0].key : '';
+        const match = presetKeyMatchingDraft(draftTheme);
+        presetSelect.value =
+          (match && themePresetList.some((p) => p.key === match) ? match : '') ||
+          (themePresetList[0] ? themePresetList[0].key : '');
         setStatus('Could not load theme presets (remote or bundled); using built-in default.', true);
       });
 
@@ -6036,23 +6132,23 @@
 
     if (aiDesignerBtn) {
       aiDesignerBtn.addEventListener('click', async () => {
-        const activeApiKey = getActiveApiKey();
-        if (!activeApiKey) {
+        if (!hasProviderCredentials()) {
           setStatus('Please set API key first.', true);
           return;
         }
+        const activeApiKey = getActiveApiKey();
         setStatus('AI designer is generating theme...', false);
         setThemeBusy(true);
         try {
           const generated = await new Promise((resolve, reject) => {
             try {
               chrome.runtime.sendMessage(
-                {
+                withVertexProjectIdIfNeeded({
                   type: 'generate-ai-theme',
                   provider: currentProvider,
                   apiKey: activeApiKey,
                   currentTheme: sanitizeThemeConfig(draftTheme),
-                },
+                }),
                 (resp) => {
                   if (chrome.runtime.lastError) {
                     reject(new Error(chrome.runtime.lastError.message));
@@ -6114,7 +6210,7 @@
               if (newPresetKey && list.some((p) => p.key === newPresetKey)) {
                 presetSelect.value = newPresetKey;
               } else {
-                const match = presetKeyMatchingCurrentTheme();
+                const match = presetKeyMatchingDraft(draftTheme);
                 presetSelect.value = match || (list[0] && list[0].key) || '';
               }
             })
@@ -6582,7 +6678,7 @@
         const sourceUrlForSummary = inputMode === 'url' ? urlInput.value.trim() : window.location.href;
         const result = await new Promise((resolve, reject) => {
           try {
-            chrome.runtime.sendMessage(messagePayload, (resp) => {
+            chrome.runtime.sendMessage(withVertexProjectIdIfNeeded(messagePayload), (resp) => {
               if (chrome.runtime.lastError) {
                 reject(new Error(chrome.runtime.lastError.message));
                 return;
@@ -6792,13 +6888,13 @@
           const result = await new Promise((resolve, reject) => {
             try {
               chrome.runtime.sendMessage(
-                {
+                withVertexProjectIdIfNeeded({
                   type: 'translate',
                   provider: currentProvider,
                   apiKey: getActiveApiKey(),
                   content: originalResponse,
                   targetLang: lang.name,
-                },
+                }),
                 (resp) => {
                   if (chrome.runtime.lastError) {
                     reject(new Error(chrome.runtime.lastError.message));
@@ -7320,7 +7416,7 @@
 
       if (request.type === 'explain-selection') {
         const term = (request.term || '').trim();
-        if (!term || !rawResponse || !getActiveApiKey()) {
+        if (!term || !rawResponse || !hasProviderCredentials()) {
           sendResponse({ ok: false });
           return;
         }
@@ -7374,13 +7470,13 @@
             const result = await new Promise((resolve, reject) => {
               try {
                 chrome.runtime.sendMessage(
-                  {
+                  withVertexProjectIdIfNeeded({
                     type: 'explain-word',
                     provider: currentProvider,
                     apiKey: getActiveApiKey(),
                     term,
                     context: explainContext,
-                  },
+                  }),
                   (resp) => {
                     if (chrome.runtime.lastError) { reject(new Error(chrome.runtime.lastError.message)); return; }
                     if (!resp) { reject(new Error('No response from background script.')); return; }
@@ -7430,6 +7526,8 @@
         STORAGE_KEYS.provider,
         STORAGE_KEYS.tokens.openai,
         STORAGE_KEYS.tokens.gemini,
+        STORAGE_KEYS.tokens.vertex_ai,
+        STORAGE_KEYS.vertexProject,
         STORAGE_KEYS.theme,
       ],
       (result) => {
@@ -7437,6 +7535,8 @@
         currentProvider = normalizeProvider(result[STORAGE_KEYS.provider]);
         setTokenForProvider('openai', result[STORAGE_KEYS.tokens.openai] || '');
         setTokenForProvider('gemini', result[STORAGE_KEYS.tokens.gemini] || '');
+        setTokenForProvider('vertex_ai', result[STORAGE_KEYS.tokens.vertex_ai] || '');
+        vertexProjectId = (result[STORAGE_KEYS.vertexProject] || '').trim();
         themeConfig = sanitizeThemeConfig(result[STORAGE_KEYS.theme]);
         applyThemeConfigToUi();
       }
