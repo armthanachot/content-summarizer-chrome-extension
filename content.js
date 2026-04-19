@@ -374,11 +374,29 @@
       display: flex;
     }
 
+    .key-view .key-api-field {
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-self: center;
+    }
+
     .key-view .key-field-label {
       font-size: 12px;
       font-weight: 600;
       color: #455A45;
       align-self: flex-start;
+      text-align: left;
+      width: 100%;
+    }
+
+    .key-view .key-vertex-wrap .key-input,
+    .key-view .key-api-field .key-input {
+      max-width: none;
+      width: 100%;
+      align-self: stretch;
     }
 
     .key-view .key-input {
@@ -5683,8 +5701,10 @@
         <span class="key-field-label">Google Cloud project ID</span>
         <input type="text" autocomplete="off" class="key-input vertex-project-input" />
       </div>
-      <span class="key-field-label api-key-label">API key</span>
-      <input type="password" placeholder="Enter API key..." class="key-input api-key-input" />
+      <div class="key-api-field">
+        <span class="key-field-label api-key-label">API key</span>
+        <input type="password" placeholder="Enter API key..." class="key-input api-key-input" />
+      </div>
       <span class="error-msg">${errorMsg || ''}</span>
       <button class="save-btn">Save & Continue</button>
     `;
@@ -6185,6 +6205,11 @@
           if (pr && !pr.error) {
             persistNote =
               ' Saved to browser theme library. Check Downloads for content-summarizer-theme-export/ (JSON + presets.json) to copy into the extension theme/ folder.';
+            if (pr.remoteUploadOk) {
+              persistNote += ' Theme JSON uploaded to the catalog API.';
+            } else if (pr.remoteUploadError) {
+              persistNote += ` Catalog upload failed: ${pr.remoteUploadError}`;
+            }
           } else if (pr && pr.error) {
             persistNote = ` (Could not save/export theme files: ${pr.error})`;
           }

@@ -7,7 +7,8 @@
   "host_permissions": [
     "<all_urls>",
     "https://alztwhogvtlrzqbngocs.supabase.co/*",
-    "https://aiplatform.googleapis.com/*"
+    "https://aiplatform.googleapis.com/*",
+    "https://content-summarizer-api-production.up.railway.app/*"
   ],
   "action": {
     "default_title": "Content Summarizer",

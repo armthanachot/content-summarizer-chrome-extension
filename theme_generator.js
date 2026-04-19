@@ -3,6 +3,39 @@
 // Depends on theme_preset_metadata.js: loadThemePresetDescriptorForAiPrompt, CONTENT_SUMMARIZER_CUSTOM_THEME_PRESETS_KEY,
 //   THEME_PRESET_INDEX_PATH.
 
+const THEME_JSON_UPLOAD_URL =
+  'https://content-summarizer-api-production.up.railway.app/api/v1/s3/upload-json-theme';
+
+/**
+ * POST theme JSON to the production catalog (same contract as note/upload_json_theme.sh).
+ * @param {{ key: string, label: string, summary: object, explain: object, chat: object, sourceFile: string }} fileObj
+ * @returns {Promise<{ ok: true } | { ok: false, error: string }>}
+ */
+async function uploadThemeJsonToCatalogApi(fileObj) {
+  try {
+    const res = await fetch(THEME_JSON_UPLOAD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fileObj),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      let detail = text.trim() || `HTTP ${res.status}`;
+      try {
+        const j = JSON.parse(text);
+        if (j && typeof j.message === 'string') detail = j.message;
+        else if (j && typeof j.error === 'string') detail = j.error;
+      } catch {
+        /* keep detail */
+      }
+      throw new Error(detail);
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err && err.message ? err.message : String(err) };
+  }
+}
+
 function themeNameToSnakeCase(name) {
   const raw = typeof name === 'string' ? name : '';
   let s = raw.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
@@ -83,11 +116,15 @@ async function persistAiGeneratedThemeAssets(normalized) {
     }
   }
 
+  const uploadResult = await uploadThemeJsonToCatalogApi(fileObj);
+
   return {
     snakeFile: sourceFile,
     key,
     storageSaved: true,
     presetsExportDownloaded: !!mergedPresetsBody,
+    remoteUploadOk: uploadResult.ok,
+    remoteUploadError: uploadResult.ok ? undefined : uploadResult.error,
   };
 }
 
