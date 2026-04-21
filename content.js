@@ -3869,6 +3869,20 @@
     };
   }
 
+  function syncExplainPopoverFromActiveState() {
+    if (!wordExplainPopover) return;
+    const termEl = wordExplainPopover.querySelector('.word-explain-popover-term');
+    const bodyEl = wordExplainPopover.querySelector('.word-explain-popover-body');
+    if (termEl) termEl.textContent = explainTerm || '';
+    if (bodyEl) bodyEl.innerHTML = explainBodyHtml || '';
+    if (explainRect) {
+      wordExplainPopover.style.left = `${explainRect.left}px`;
+      wordExplainPopover.style.top = `${explainRect.top}px`;
+      wordExplainPopover.style.width = `${explainRect.width}px`;
+      wordExplainPopover.style.height = `${explainRect.height}px`;
+    }
+  }
+
   function applyActivePageFloatingWindowsState() {
     if (!summaryChatPopover || !wordExplainPopover) return;
     const page = getActiveSourcePage();
@@ -3892,16 +3906,7 @@
     if (minimizedPanels.has('explain')) {
       wordExplainPopover.classList.remove('visible');
     } else if (explainVisibleOnPage && explainTerm) {
-      const termEl = wordExplainPopover.querySelector('.word-explain-popover-term');
-      const bodyEl = wordExplainPopover.querySelector('.word-explain-popover-body');
-      if (termEl) termEl.textContent = explainTerm;
-      if (bodyEl) bodyEl.innerHTML = explainBodyHtml || '';
-      if (explainRect) {
-        wordExplainPopover.style.left = `${explainRect.left}px`;
-        wordExplainPopover.style.top = `${explainRect.top}px`;
-        wordExplainPopover.style.width = `${explainRect.width}px`;
-        wordExplainPopover.style.height = `${explainRect.height}px`;
-      }
+      syncExplainPopoverFromActiveState();
       wordExplainPopover.classList.add('visible');
     } else {
       wordExplainPopover.classList.remove('visible');
@@ -4455,6 +4460,7 @@
       modal.style.display = 'flex';
       bringFloatingWindowToFront(modal);
     } else if (key === 'explain') {
+      syncExplainPopoverFromActiveState();
       wordExplainPopover.classList.add('visible');
       bringFloatingWindowToFront(wordExplainPopover);
       saveActiveSourcePageStateIfMainModal();
